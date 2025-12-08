@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "name": "Co-own Heights",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1200,
+    "price_per_sft": 6500,
+    "address": "Whitefield, Bangalore",
+    "lat": 12.9698,
+    "lng": 77.7499
+  },
+  {
+    "id": 2,
+    "name": "Lakeview Residencies",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 980,
+    "price_per_sft": 7200,
+    "address": "Hebbal, Bangalore",
+    "lat": 13.0358,
+    "lng": 77.597
+  },
+  {
+    "id": 3,
+    "name": "Greenwoods Enclave",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1450,
+    "price_per_sft": 6900,
+    "address": "Sarjapur Road, Bangalore",
+    "lat": 12.9081,
+    "lng": 77.6844
+  },
+  {
+    "id": 4,
+    "name": "Skyline Towers",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1100,
+    "price_per_sft": 7600,
+    "address": "Yeshwanthpur, Bangalore",
+    "lat": 13.0285,
+    "lng": 77.5408
+  },
+  {
+    "id": 5,
+    "name": "Urban Nest",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 900,
+    "price_per_sft": 6400,
+    "address": "BTM Layout, Bangalore",
+    "lat": 12.9166,
+    "lng": 77.6101
+  },
+  {
+    "id": 6,
+    "name": "Metro View Apartments",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1300,
+    "price_per_sft": 7100,
+    "address": "JP Nagar, Bangalore",
+    "lat": 12.9,
+    "lng": 77.585
+  },
+  {
+    "id": 7,
+    "name": "Tech Park Homes",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1150,
+    "price_per_sft": 6800,
+    "address": "Outer Ring Road, Bangalore",
+    "lat": 12.9565,
+    "lng": 77.701
+  },
+  {
+    "id": 8,
+    "name": "Gardenia Residency",
+    "type": "residential",
+    "city": "Bangalore",
+    "area_sft": 1000,
+    "price_per_sft": 6300,
+    "address": "Malleshwaram, Bangalore",
+    "lat": 13.0033,
+    "lng": 77.5695
+  }
+]

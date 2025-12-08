@@ -1,0 +1,57 @@
+.property-card {
+  background: white;
+  padding: 1rem 1.1rem;
+  border-radius: 0.9rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.property-tag {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
+
+.property-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.property-address {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.property-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.property-meta .label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.property-meta .value {
+  font-size: 0.88rem;
+  color: #111827;
+  font-weight: 500;
+}
+
+.btn-outline {
+  margin-top: 0.6rem;
+  padding: 0.5rem;
+  border-radius: 0.7rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  font-size: 0.85rem;
+  color: #6b7280;
+  cursor: not-allowed; /* stub */
+}
