@@ -3,7 +3,7 @@ name: AI-generated LOC report
 on:
   workflow_dispatch: {}   # run manually
   push:
-    branches: [ ai-lines ]    # or your default branch
+    branches: [ main ]    # or your default branch
 
 permissions:
   contents: read
