@@ -15,7 +15,7 @@ function PropertyCard({ property }) {
   const totalPrice = area_sft * price_per_sft;
 
   // Generate Google Maps URL from latitude and longitude
-  const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+  const googleMapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
 
   const handleMapClick = () => {
     window.open(googleMapsUrl, '_blank', 'noopener,noreferrer');
