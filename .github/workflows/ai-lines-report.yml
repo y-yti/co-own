@@ -1,0 +1,83 @@
+name: AI-generated LOC report
+
+on:
+  workflow_dispatch: {}   # run manually
+  push:
+    branches: [ ai-lines ]    # or your default branch
+
+permissions:
+  contents: read
+
+jobs:
+  ai-loc-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # IMPORTANT: need full history for git log
+
+      - name: Set up CodeQL bundle
+        uses: github/codeql-action/setup-codeql@v4
+
+      - name: Create CodeQL database
+        run: |
+          codeql database create codeql-db \
+            --language=javascript, python, html, css \
+            --source-root=. \
+            --command="true"
+
+      - name: Get total LOC from CodeQL
+        id: codeql_loc
+        run: |
+          TOTAL_LOC=$(codeql database print-baseline codeql-db | awk '{print $6}' | tail -n1)
+          echo "Total LOC (CodeQL baseline): $TOTAL_LOC"
+          echo "TOTAL_LOC=$TOTAL_LOC" >> "$GITHUB_OUTPUT"
+
+      - name: Compute AI-generated LOC from git trailers
+        id: ai_loc
+        run: |
+          # Get all commits that have trailer 'AI-Generated: true'
+          git log --all --grep='AI-Generated: true' --format='%H' > ai_commits.txt
+
+          if [ ! -s ai_commits.txt ]; then
+            echo "No AI-Generated: true commits found"
+            echo "AI_LOC=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          AI_LOC=0
+
+          while read SHA; do
+            # Sum the "added lines" column from numstat for this commit
+            ADDED=$(git show --numstat --format='' "$SHA" \
+              | awk '{ added += $1 } END { print added+0 }')
+            AI_LOC=$((AI_LOC + ADDED))
+          done < ai_commits.txt
+
+          echo "AI-generated LOC (added by such commits): $AI_LOC"
+          echo "AI_LOC=$AI_LOC" >> "$GITHUB_OUTPUT"
+
+      - name: Print summary
+        run: |
+          TOTAL=${{ steps.codeql_loc.outputs.TOTAL_LOC }}
+          AI=${{ steps.ai_loc.outputs.AI_LOC }}
+
+          if [ -z "$TOTAL" ] || [ "$TOTAL" = "0" ]; then
+            echo "Total LOC is zero or unknown; cannot compute percentage."
+            exit 0
+          fi
+
+          PCT=$(python - <<EOF
+total = int("$TOTAL")
+ai = int("$AI")
+print(f"{(ai/total)*100:.2f}")
+EOF
+          )
+
+          echo "========================"
+          echo "Total LOC (CodeQL):   $TOTAL"
+          echo "AI-generated LOC:     $AI"
+          echo "AI % of total:        $PCT %"
+          echo "========================"
