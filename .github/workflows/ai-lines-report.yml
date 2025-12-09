@@ -18,20 +18,15 @@ jobs:
         with:
           fetch-depth: 0   # IMPORTANT: need full history for git log
 
-      - name: Set up CodeQL bundle
-        uses: github/codeql-action/setup-codeql@v4
-
-      - name: Create CodeQL database
-        run: |
-          codeql database create codeql-db \
-            --language=javascript, python, html, css \
-            --source-root=. \
-            --command="true"
-
-      - name: Get total LOC from CodeQL
+      - name: Get total LOC from source files
         id: codeql_loc
         run: |
-          TOTAL_LOC=$(codeql database print-baseline codeql-db | awk '{print $6}' | tail -n1)
+          # Count total lines in source files (excluding dependencies)
+          TOTAL_LOC=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.py' -o -name '*.css' -o -name '*.html' \) \
+            -not -path '*/node_modules/*' \
+            -not -path '*/__pycache__/*' \
+            -not -path '*/.git/*' \
+            | xargs wc -l 2>/dev/null | tail -n1 | awk '{print $1}')
           echo "Total LOC (CodeQL baseline): $TOTAL_LOC"
           echo "TOTAL_LOC=$TOTAL_LOC" >> "$GITHUB_OUTPUT"
 
@@ -69,15 +64,10 @@ jobs:
             exit 0
           fi
 
-          PCT=$(python - <<EOF
-total = int("$TOTAL")
-ai = int("$AI")
-print(f"{(ai/total)*100:.2f}")
-EOF
-          )
+          PCT=$(awk "BEGIN {printf \"%.2f\", ($AI/$TOTAL)*100}")
 
-          echo "========================"
-          echo "Total LOC (CodeQL):   $TOTAL"
-          echo "AI-generated LOC:     $AI"
-          echo "AI % of total:        $PCT %"
-          echo "========================"
+          echo ""
+          echo "Total lines of code (CodeQL baseline): $TOTAL"
+          echo "Lines added by AI-Generated commits:  $AI"
+          echo "Percentage AI-generated:              $PCT%"
+          echo ""
