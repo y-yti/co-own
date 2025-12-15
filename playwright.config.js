@@ -16,7 +16,7 @@ module.exports = defineConfig({
     {
       name: 'chromium-frontend',
       testMatch: ['frontend/tests/**/*.spec.ts'],
-      use: { ...devices['Desktop Chrome'], baseURL: process.env.BASE_URL || 'http://127.0.0.1:5173' },
+      use: { ...devices['Desktop Chrome'], baseURL: process.env.BASE_URL || 'http://localhost:5173' },
     },
     // Backend API tests (no browser navigation needed)
     {
