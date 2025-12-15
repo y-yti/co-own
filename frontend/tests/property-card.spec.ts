@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Property Card', () => {
   test('shows Google Maps icon when coordinates exist', async ({ page, context }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
     await page.getByPlaceholder('Enter your name').fill('Smoke User');
     await page.getByRole('button', { name: 'Continue' }).click();
 
