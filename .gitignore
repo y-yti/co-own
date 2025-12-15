@@ -1,1 +1,6 @@
 backend/__pycache__/
+node_modules/
+playwright-report/
+frontend/test-results/
+.gitignore
+test-results/
