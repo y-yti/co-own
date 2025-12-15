@@ -10,9 +10,9 @@ test.describe('Backend properties API', () => {
     const res = await request.get(`${API_BASE}/properties`);
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
-    expect(Array.isArray(data)).toBeTruthy();
+    expect(Array.isArray(data.items)).toBeTruthy();
 
-    for (const item of data) {
+    for (const item of data.items) {
       expect(item).toHaveProperty('name');
       expect(item).toHaveProperty('address');
       expect(item).toHaveProperty('lat');
