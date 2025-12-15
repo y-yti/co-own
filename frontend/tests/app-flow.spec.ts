@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('App end-to-end flow', () => {
   test('login and see investor dashboard with properties', async ({ page, context }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
 
     // Login page elements
     await expect(page.getByText('Co-own')).toBeVisible();
