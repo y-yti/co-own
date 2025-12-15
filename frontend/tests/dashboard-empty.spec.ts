@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 // As a smoke test, we at least verify dashboard skeleton after login.
 
 test('dashboard renders skeleton and main sections after login', async ({ page }) => {
-  await page.goto('http://localhost:5173/');
+  await page.goto('/');
   await page.getByPlaceholder('Enter your name').fill('Smoke User');
   await page.getByRole('button', { name: 'Continue' }).click();
 
