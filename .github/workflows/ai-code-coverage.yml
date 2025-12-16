@@ -30,14 +30,14 @@ jobs:
           # Get all commits with AI-Generated trailer
           git log --all --grep='AI-Generated: true' --format='%H' > ai_commits.txt
           
-          if [ !  -s ai_commits.txt ]; then
+          if [ ! -s ai_commits.txt ]; then
             echo "No AI-generated commits found"
             echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           
           # Extract files changed in those commits
-          > ai_files. txt
+          > ai_files.txt
           while read SHA; do
             git show --name-only --format='' "$SHA" \
               | grep -E '\.(js|jsx|py|ts|tsx)$' >> ai_files.txt || true
@@ -48,7 +48,7 @@ jobs:
             [ -f "$file" ] && echo "$file"
           done > ai_files_final.txt
           
-          if [ !  -s ai_files_final. txt ]; then
+          if [ ! -s ai_files_final.txt ]; then
             echo "No AI-generated source files found"
             echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -86,7 +86,7 @@ jobs:
       - name: Install Python dependencies
         if: steps.ai_files.outputs.ai_files_exist == 'true'
         run: |
-          if [ -f requirements. txt ]; then
+          if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
           pip install pytest pytest-cov coverage
@@ -101,7 +101,7 @@ jobs:
           fi
 
       - name: Run Python tests with coverage
-        if: steps.ai_files. outputs.ai_files_exist == 'true'
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
         continue-on-error: true
         run: |
           if [ -d tests ] || find . -name 'test_*.py' -o -name '*_test.py' | grep -q .; then
@@ -195,7 +195,7 @@ jobs:
           with open('coverage.json') as f:
               coverage = json.load(f)
           
-          with open('ai_files_final. txt') as f:
+          with open('ai_files_final.txt') as f:
               ai_files = [line.strip() for line in f if line.strip()]
           
           total_statements = 0
@@ -204,7 +204,7 @@ jobs:
           details = []
           
           for file_path, data in coverage.get('files', {}).items():
-              is_ai_file = any(f in file_path or file_path.endswith(f. split('/')[-1]) for f in ai_files)
+              is_ai_file = any(f in file_path or file_path.endswith(f.split('/')[-1]) for f in ai_files)
               
               if is_ai_file:
                   files_covered += 1
@@ -348,7 +348,7 @@ jobs:
             });
 
       - name: No AI code found
-        if: steps.ai_files. outputs.ai_files_exist != 'true'
+        if: steps.ai_files.outputs.ai_files_exist != 'true'
         run:  |
           echo "✅ No AI-generated code found in this repository (no commits with 'AI-Generated: true' trailer)"
           echo "To track AI-generated code, add 'AI-Generated: true' to commit messages:"
