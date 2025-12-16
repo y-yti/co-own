@@ -2,6 +2,8 @@ name: AI-Generated Code Coverage Report
 
 on:
   workflow_dispatch:  {}
+  push:
+    branches: [ aicodecoverage ]
   pull_request:
     branches: [ aicodecoverage ] 
 
