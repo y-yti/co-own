@@ -40,7 +40,7 @@ jobs:
           > ai_files.txt
           while read SHA; do
             git show --name-only --format='' "$SHA" \
-              | grep -E '\.(js|jsx|py|ts|tsx)$' >> ai_files.txt || true
+              | grep -E '\.(js|jsx|py|ts|tsx|html|css)$' >> ai_files.txt || true
           done < ai_commits.txt
           
           # Deduplicate and filter existing files
@@ -114,7 +114,7 @@ jobs:
         id: js_coverage
         continue-on-error: true
         run: |
-          if [ !  -f coverage/coverage-final.json ]; then
+          if [ ! -f coverage/coverage-final.json ]; then
             echo "No JavaScript coverage data found"
             echo "js_coverage=N/A" >> "$GITHUB_OUTPUT"
             exit 0
@@ -134,7 +134,7 @@ jobs:
           const details = [];
           
           for (const [filePath, data] of Object.entries(coverage)) {
-            const isAIFile = aiFiles.some(f => filePath.includes(f) || f.includes(filePath. split('/').pop()));
+            const isAIFile = aiFiles.some(f => filePath.includes(f) || f.includes(filePath.split('/').pop()));
             
             if (isAIFile) {
               filesCovered++;
@@ -155,7 +155,7 @@ jobs:
               }
               
               const stmtPct = data.s ? (Object.values(data.s).filter(v => v > 0).length / Object.values(data.s).length * 100).toFixed(2) : 0;
-              details.push(`  - ${filePath. split('/').pop()}: ${stmtPct}%`);
+              details.push(`  - ${filePath.split('/').pop()}: ${stmtPct}%`);
             }
           }
           
@@ -182,7 +182,7 @@ jobs:
         id: py_coverage
         continue-on-error: true
         run: |
-          if [ ! -f coverage. json ]; then
+          if [ ! -f coverage.json ]; then
             echo "No Python coverage data found"
             echo "py_coverage=N/A" >> "$GITHUB_OUTPUT"
             exit 0
@@ -217,7 +217,7 @@ jobs:
                   covered_statements += covered
                   
                   pct = (covered / num_statements * 100) if num_statements > 0 else 0
-                  details. append(f"  - {os.path.basename(file_path)}: {pct:.2f}%")
+                  details.append(f"  - {os.path.basename(file_path)}: {pct:.2f}%")
           
           stmt_pct = (covered_statements / total_statements * 100) if total_statements > 0 else 0
           
@@ -246,7 +246,7 @@ jobs:
         id: loc_stats
         run: |
           # Total LOC in codebase
-          TOTAL_LOC=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.py' \) \
+          TOTAL_LOC=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.py' -o -name '*.html' -o -name '*.css' \) \
             -not -path '*/node_modules/*' \
             -not -path '*/__pycache__/*' \
             -not -path '*/.git/*' \
@@ -281,7 +281,7 @@ jobs:
           
           | Metric | Value |
           |--------|-------|
-          | **Total Lines of Code** | ${{ steps. loc_stats.outputs. TOTAL_LOC }} |
+          | **Total Lines of Code** | ${{ steps.loc_stats.outputs.TOTAL_LOC }} |
           | **AI-Generated LOC** | ${{ steps.loc_stats.outputs.AI_LOC }} |
           | **AI Percentage** | ${{ steps.loc_stats.outputs.AI_PCT }}% |
           | **AI Files Tracked** | ${{ steps.ai_files.outputs.AI_FILES_COUNT }} |
@@ -290,7 +290,7 @@ jobs:
           
           | Language | Coverage |
           |----------|----------|
-          | **JavaScript/TypeScript** | ${{ steps. js_coverage.outputs.js_coverage }}% |
+          | **JavaScript/TypeScript** | ${{ steps.js_coverage.outputs.js_coverage }}% |
           | **Python** | ${{ steps.py_coverage.outputs.py_coverage }}% |
           
           ## 📋 AI-Generated Files
@@ -333,7 +333,7 @@ jobs:
             ai_files_final.txt
 
       - name: Comment on PR
-        if: github.event_name == 'pull_request' && steps. ai_files.outputs.ai_files_exist == 'true'
+        if: github.event_name == 'pull_request' && steps.ai_files.outputs.ai_files_exist == 'true'
         uses: actions/github-script@v7
         with: 
           script: |
