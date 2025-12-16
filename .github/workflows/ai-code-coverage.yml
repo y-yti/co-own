@@ -1,0 +1,354 @@
+name: AI-Generated Code Coverage Report
+
+on:
+  workflow_dispatch:  {}
+  pull_request:
+    branches: [ aicodecoverage ] 
+
+permissions:
+  contents: read
+  pull-requests: write  # To comment coverage on PRs
+
+jobs:
+  ai-coverage-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git log analysis
+
+      # ===== STEP 1: Identify AI-Generated Files =====
+      - name: Identify AI-generated files
+        id: ai_files
+        run: |
+          echo "Finding all commits with AI-Generated: true trailer..."
+          
+          # Get all commits with AI-Generated trailer
+          git log --all --grep='AI-Generated: true' --format='%H' > ai_commits.txt
+          
+          if [ !  -s ai_commits.txt ]; then
+            echo "No AI-generated commits found"
+            echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Extract files changed in those commits
+          > ai_files. txt
+          while read SHA; do
+            git show --name-only --format='' "$SHA" \
+              | grep -E '\.(js|jsx|py|ts|tsx)$' >> ai_files.txt || true
+          done < ai_commits.txt
+          
+          # Deduplicate and filter existing files
+          sort -u ai_files.txt | while read file; do
+            [ -f "$file" ] && echo "$file"
+          done > ai_files_final.txt
+          
+          if [ !  -s ai_files_final. txt ]; then
+            echo "No AI-generated source files found"
+            echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          echo "AI-generated files found:"
+          cat ai_files_final.txt
+          
+          echo "ai_files_exist=true" >> "$GITHUB_OUTPUT"
+          echo "AI_FILES_COUNT=$(wc -l < ai_files_final.txt)" >> "$GITHUB_OUTPUT"
+
+      # ===== STEP 2: Setup Language Environments =====
+      - name: Setup Node.js
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ===== STEP 3: Install Dependencies =====
+      - name:  Install Node dependencies
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm install
+          fi
+
+      - name: Install Python dependencies
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        run: |
+          if [ -f requirements. txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov coverage
+
+      # ===== STEP 4: Run Tests with Coverage =====
+      - name:  Run JavaScript/TypeScript tests with coverage
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        continue-on-error: true
+        run: |
+          if [ -f package.json ] && grep -q '"test"' package.json; then
+            npm test -- --coverage --coverage-reporters=json --coverage-reporters=text || true
+          fi
+
+      - name: Run Python tests with coverage
+        if: steps.ai_files. outputs.ai_files_exist == 'true'
+        continue-on-error: true
+        run: |
+          if [ -d tests ] || find . -name 'test_*.py' -o -name '*_test.py' | grep -q .; then
+            pytest --cov=. --cov-report=json --cov-report=term || true
+          fi
+
+      # ===== STEP 5: Analyze Coverage for AI-Generated Code =====
+      - name: Analyze AI code coverage (JavaScript/TypeScript)
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: js_coverage
+        continue-on-error: true
+        run: |
+          if [ !  -f coverage/coverage-final.json ]; then
+            echo "No JavaScript coverage data found"
+            echo "js_coverage=N/A" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          node <<'EOF'
+          const fs = require('fs');
+          const coverage = JSON.parse(fs.readFileSync('./coverage/coverage-final.json', 'utf8'));
+          const aiFiles = fs.readFileSync('ai_files_final.txt', 'utf8').trim().split('\n').filter(Boolean);
+          
+          let totalStatements = 0;
+          let coveredStatements = 0;
+          let totalBranches = 0;
+          let coveredBranches = 0;
+          let filesCovered = 0;
+          
+          const details = [];
+          
+          for (const [filePath, data] of Object.entries(coverage)) {
+            const isAIFile = aiFiles.some(f => filePath.includes(f) || f.includes(filePath. split('/').pop()));
+            
+            if (isAIFile) {
+              filesCovered++;
+              
+              // Statements
+              if (data.s) {
+                const stmts = Object.values(data.s);
+                totalStatements += stmts.length;
+                coveredStatements += stmts.filter(v => v > 0).length;
+              }
+              
+              // Branches
+              if (data.b) {
+                for (const branches of Object.values(data.b)) {
+                  totalBranches += branches.length;
+                  coveredBranches += branches.filter(v => v > 0).length;
+                }
+              }
+              
+              const stmtPct = data.s ? (Object.values(data.s).filter(v => v > 0).length / Object.values(data.s).length * 100).toFixed(2) : 0;
+              details.push(`  - ${filePath. split('/').pop()}: ${stmtPct}%`);
+            }
+          }
+          
+          const stmtPct = totalStatements > 0 ? (coveredStatements / totalStatements * 100).toFixed(2) : 0;
+          const branchPct = totalBranches > 0 ? (coveredBranches / totalBranches * 100).toFixed(2) : 0;
+          
+          console.log(`\n📊 JavaScript/TypeScript AI Code Coverage:`);
+          console.log(`Files analyzed: ${filesCovered}`);
+          console.log(`Statement coverage: ${stmtPct}% (${coveredStatements}/${totalStatements})`);
+          console.log(`Branch coverage: ${branchPct}% (${coveredBranches}/${totalBranches})`);
+          console.log(`\nPer-file breakdown:`);
+          details.forEach(d => console.log(d));
+          
+          fs.writeFileSync('js_coverage_summary.txt', JSON.stringify({
+            stmtPct, branchPct, coveredStatements, totalStatements, coveredBranches, totalBranches, filesCovered
+          }));
+          EOF
+          
+          JS_COV=$(node -e "console.log(JSON.parse(require('fs').readFileSync('js_coverage_summary.txt')).stmtPct)")
+          echo "js_coverage=$JS_COV" >> "$GITHUB_OUTPUT"
+
+      - name:  Analyze AI code coverage (Python)
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: py_coverage
+        continue-on-error: true
+        run: |
+          if [ ! -f coverage. json ]; then
+            echo "No Python coverage data found"
+            echo "py_coverage=N/A" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          python3 <<'EOF'
+          import json
+          import os
+          
+          with open('coverage.json') as f:
+              coverage = json.load(f)
+          
+          with open('ai_files_final. txt') as f:
+              ai_files = [line.strip() for line in f if line.strip()]
+          
+          total_statements = 0
+          covered_statements = 0
+          files_covered = 0
+          details = []
+          
+          for file_path, data in coverage.get('files', {}).items():
+              is_ai_file = any(f in file_path or file_path.endswith(f. split('/')[-1]) for f in ai_files)
+              
+              if is_ai_file:
+                  files_covered += 1
+                  summary = data.get('summary', {})
+                  
+                  num_statements = summary.get('num_statements', 0)
+                  covered = summary.get('covered_lines', 0)
+                  
+                  total_statements += num_statements
+                  covered_statements += covered
+                  
+                  pct = (covered / num_statements * 100) if num_statements > 0 else 0
+                  details. append(f"  - {os.path.basename(file_path)}: {pct:.2f}%")
+          
+          stmt_pct = (covered_statements / total_statements * 100) if total_statements > 0 else 0
+          
+          print(f"\n📊 Python AI Code Coverage:")
+          print(f"Files analyzed: {files_covered}")
+          print(f"Statement coverage: {stmt_pct:.2f}% ({covered_statements}/{total_statements})")
+          print(f"\nPer-file breakdown:")
+          for d in details:
+              print(d)
+          
+          with open('py_coverage_summary.txt', 'w') as f:
+              json.dump({
+                  'stmtPct': f"{stmt_pct:.2f}",
+                  'coveredStatements': covered_statements,
+                  'totalStatements':  total_statements,
+                  'filesCovered': files_covered
+              }, f)
+          EOF
+          
+          PY_COV=$(python3 -c "import json; print(json.load(open('py_coverage_summary.txt'))['stmtPct'])")
+          echo "py_coverage=$PY_COV" >> "$GITHUB_OUTPUT"
+
+      # ===== STEP 6: Calculate Total LOC Stats =====
+      - name: Calculate LOC statistics
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: loc_stats
+        run: |
+          # Total LOC in codebase
+          TOTAL_LOC=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.py' \) \
+            -not -path '*/node_modules/*' \
+            -not -path '*/__pycache__/*' \
+            -not -path '*/.git/*' \
+            -not -path '*/dist/*' \
+            -not -path '*/build/*' \
+            | xargs wc -l 2>/dev/null | tail -n1 | awk '{print $1}')
+          
+          # AI-generated LOC
+          AI_LOC=0
+          while read SHA; do
+            ADDED=$(git show --numstat --format='' "$SHA" \
+              | awk '{ added += $1 } END { print added+0 }')
+            AI_LOC=$((AI_LOC + ADDED))
+          done < ai_commits.txt
+          
+          # AI percentage
+          AI_PCT=$(awk "BEGIN {printf \"%.2f\", ($AI_LOC/$TOTAL_LOC)*100}")
+          
+          echo "TOTAL_LOC=$TOTAL_LOC" >> "$GITHUB_OUTPUT"
+          echo "AI_LOC=$AI_LOC" >> "$GITHUB_OUTPUT"
+          echo "AI_PCT=$AI_PCT" >> "$GITHUB_OUTPUT"
+
+      # ===== STEP 7: Generate Comprehensive Report =====
+      - name:  Generate final report
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: report
+        run: |
+          cat > ai_coverage_report.md <<'REPORT'
+          # 🤖 AI-Generated Code Coverage Report
+          
+          ## 📈 Code Statistics
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Total Lines of Code** | ${{ steps. loc_stats.outputs. TOTAL_LOC }} |
+          | **AI-Generated LOC** | ${{ steps.loc_stats.outputs.AI_LOC }} |
+          | **AI Percentage** | ${{ steps.loc_stats.outputs.AI_PCT }}% |
+          | **AI Files Tracked** | ${{ steps.ai_files.outputs.AI_FILES_COUNT }} |
+          
+          ## 🎯 Test Coverage for AI-Generated Code
+          
+          | Language | Coverage |
+          |----------|----------|
+          | **JavaScript/TypeScript** | ${{ steps. js_coverage.outputs.js_coverage }}% |
+          | **Python** | ${{ steps.py_coverage.outputs.py_coverage }}% |
+          
+          ## 📋 AI-Generated Files
+          
+          ```
+          $(cat ai_files_final.txt)
+          ```
+          
+          ## 💡 Recommendations
+          
+          REPORT
+          
+          # Add recommendations based on coverage
+          JS_COV="${{ steps.js_coverage.outputs.js_coverage }}"
+          PY_COV="${{ steps.py_coverage.outputs.py_coverage }}"
+          
+          if [ "$JS_COV" != "N/A" ] && [ "$(echo "$JS_COV < 80" | bc -l 2>/dev/null || echo 1)" -eq 1 ]; then
+            echo "- ⚠️  JavaScript/TypeScript AI code coverage is below 80% - consider adding more tests" >> ai_coverage_report.md
+          fi
+          
+          if [ "$PY_COV" != "N/A" ] && [ "$(echo "$PY_COV < 80" | bc -l 2>/dev/null || echo 1)" -eq 1 ]; then
+            echo "- ⚠️  Python AI code coverage is below 80% - consider adding more tests" >> ai_coverage_report.md
+          fi
+          
+          echo "" >> ai_coverage_report.md
+          echo "---" >> ai_coverage_report.md
+          echo "*Report generated on $(date)*" >> ai_coverage_report. md
+          
+          cat ai_coverage_report.md
+
+      - name: Upload coverage report as artifact
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/upload-artifact@v4
+        with: 
+          name: ai-coverage-report
+          path: |
+            ai_coverage_report. md
+            coverage/
+            coverage.json
+            ai_files_final.txt
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps. ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/github-script@v7
+        with: 
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('ai_coverage_report.md', 'utf8');
+            
+            github.rest.issues. createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: No AI code found
+        if: steps.ai_files. outputs.ai_files_exist != 'true'
+        run:  |
+          echo "✅ No AI-generated code found in this repository (no commits with 'AI-Generated: true' trailer)"
+          echo "To track AI-generated code, add 'AI-Generated: true' to commit messages:"
+          echo ""
+          echo "  git commit -m 'Add feature' -m 'AI-Generated: true'"
