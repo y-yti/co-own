@@ -1,0 +1,323 @@
+name: AI-Generated Code Coverage Report
+
+on:
+  workflow_dispatch:  {}
+  pull_request:
+    branches: [ main ] 
+
+permissions:
+  contents: read
+  pull-requests: write  # To comment coverage on PRs
+
+jobs:
+  ai-coverage-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git log analysis
+
+      # ===== STEP 1: Identify AI-Generated Files =====
+      - name: Identify AI-generated files
+        id: ai_files
+        run: |
+          echo "Finding all commits with AI-Generated: true trailer..."
+          
+          # Get all commits with AI-Generated trailer
+          git log --all --grep='AI-Generated: true' --format='%H' > ai_commits.txt
+          
+          if [ ! -s ai_commits.txt ]; then
+            echo "No AI-generated commits found"
+            echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Extract files changed in those commits
+          > ai_files.txt
+          while read SHA; do
+            git show --name-only --format='' "$SHA" \
+              | grep -E '\.(js|jsx|py|ts|tsx|html|css)$' >> ai_files.txt || true
+          done < ai_commits.txt
+          
+          # Deduplicate and filter existing files
+          sort -u ai_files.txt | while read file; do
+            [ -f "$file" ] && echo "$file"
+          done > ai_files_final.txt
+          
+          if [ ! -s ai_files_final.txt ]; then
+            echo "No AI-generated source files found"
+            echo "ai_files_exist=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          echo "AI-generated files found:"
+          cat ai_files_final.txt
+          
+          echo "ai_files_exist=true" >> "$GITHUB_OUTPUT"
+          echo "AI_FILES_COUNT=$(wc -l < ai_files_final.txt)" >> "$GITHUB_OUTPUT"
+
+      # ===== STEP 2: Setup Language Environments =====
+      - name: Setup Node.js
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # ===== STEP 3: Install Dependencies =====
+      - name:  Install Node dependencies
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        run: |
+          if [ -f package.json ]; then
+            echo "📦 Installing dependencies..."
+            npm ci || npm install
+            echo "🎭 Installing Playwright browsers..."
+            npx playwright install --with-deps
+          fi
+
+      - name: Install Python dependencies
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+          pip install pytest pytest-cov coverage
+
+      # ===== STEP 4: Run Tests with Coverage =====
+      - name:  Run Playwright tests
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        continue-on-error: true
+        run: |
+          echo "🔍 Checking for Playwright tests..."
+          if [ -f playwright.config.js ] || [ -f playwright.config.ts ]; then
+            echo "✓ Playwright config found"
+            
+            # Count test files
+            FRONTEND_TESTS=$(find frontend/tests -name '*.spec.ts' 2>/dev/null | wc -l)
+            BACKEND_TESTS=$(find backend/tests -name '*.spec.ts' 2>/dev/null | wc -l)
+            ROOT_TESTS=$(find tests -maxdepth 1 -name '*.spec.ts' 2>/dev/null | wc -l)
+            
+            echo "📊 Test files found:"
+            echo "   Frontend tests: $FRONTEND_TESTS"
+            echo "   Backend tests: $BACKEND_TESTS"
+            echo "   Root tests: $ROOT_TESTS"
+            
+            if [ -d frontend/tests ]; then
+              echo "\n📁 Frontend test files:"
+              ls -la frontend/tests/*.spec.ts 2>/dev/null || echo "   None"
+            fi
+            
+            if [ -d backend/tests ]; then
+              echo "\n📁 Backend test files:"
+              ls -la backend/tests/*.spec.ts 2>/dev/null || echo "   None"
+            fi
+            
+            echo "\n🎭 Running Playwright tests..."
+            npx playwright test || true
+            
+            echo "\n📊 Checking test results..."
+            if [ -d playwright-report ]; then
+              echo "✓ Playwright report generated"
+              ls -la playwright-report/ | head -10
+            fi
+            if [ -d test-results ]; then
+              echo "✓ Test results directory found"
+            fi
+          else
+            echo "⚠ No Playwright config found"
+          fi
+
+      # ===== STEP 5: Analyze Test Coverage for AI Files =====
+      - name: Analyze AI file test coverage
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: ai_test_coverage
+        continue-on-error: true
+        run: |
+          echo "📊 Analyzing test coverage for AI-generated files..."
+          
+          # Read AI files
+          mapfile -t AI_FILES < ai_files_final.txt
+          
+          TOTAL_AI_FILES=${#AI_FILES[@]}
+          TESTED_FILES=0
+          UNTESTED_FILES=()
+          TESTED_FILE_LIST=()
+          
+          echo ""
+          echo "🔍 Checking which AI files have tests..."
+          
+          for ai_file in "${AI_FILES[@]}"; do
+            # Extract filename without extension
+            filename=$(basename "$ai_file")
+            filename_noext="${filename%.*}"
+            
+            # Look for test files that might test this AI file
+            # Search in all test directories
+            if grep -r -l "$filename_noext" frontend/tests/*.spec.ts backend/tests/*.spec.ts tests/*.spec.ts 2>/dev/null | grep -q .; then
+              TESTED_FILES=$((TESTED_FILES + 1))
+              TESTED_FILE_LIST+=("$ai_file")
+              echo "  ✓ $ai_file - has tests"
+            else
+              UNTESTED_FILES+=("$ai_file")
+              echo "  ✗ $ai_file - no tests found"
+            fi
+          done
+          
+          # Calculate coverage percentage
+          if [ $TOTAL_AI_FILES -gt 0 ]; then
+            TEST_COVERAGE=$(awk "BEGIN {printf \"%.2f\", ($TESTED_FILES/$TOTAL_AI_FILES)*100}")
+          else
+            TEST_COVERAGE="0"
+          fi
+          
+          echo ""
+          echo "📈 Test Coverage Summary:"
+          echo "   Total AI files: $TOTAL_AI_FILES"
+          echo "   Files with tests: $TESTED_FILES"
+          echo "   Files without tests: ${#UNTESTED_FILES[@]}"
+          echo "   Coverage: $TEST_COVERAGE%"
+          
+          # Output for GitHub Actions
+          echo "test_coverage=$TEST_COVERAGE" >> "$GITHUB_OUTPUT"
+          echo "tested_files=$TESTED_FILES" >> "$GITHUB_OUTPUT"
+          echo "total_ai_files=$TOTAL_AI_FILES" >> "$GITHUB_OUTPUT"
+          
+          # Save untested files list
+          if [ ${#UNTESTED_FILES[@]} -gt 0 ]; then
+            printf "%s\n" "${UNTESTED_FILES[@]}" > untested_ai_files.txt
+          else
+            touch untested_ai_files.txt
+          fi
+
+      # ===== STEP 6: Calculate Total LOC Stats =====
+      - name: Calculate LOC statistics
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: loc_stats
+        run: |
+          # Total LOC in codebase
+          TOTAL_LOC=$(find . -type f \( -name '*.js' -o -name '*.jsx' -o -name '*.ts' -o -name '*.tsx' -o -name '*.py' -o -name '*.html' -o -name '*.css' \) \
+            -not -path '*/node_modules/*' \
+            -not -path '*/__pycache__/*' \
+            -not -path '*/.git/*' \
+            -not -path '*/dist/*' \
+            -not -path '*/build/*' \
+            | xargs wc -l 2>/dev/null | tail -n1 | awk '{print $1}')
+          
+          # AI-generated LOC
+          AI_LOC=0
+          while read SHA; do
+            ADDED=$(git show --numstat --format='' "$SHA" \
+              | awk '{ added += $1 } END { print added+0 }')
+            AI_LOC=$((AI_LOC + ADDED))
+          done < ai_commits.txt
+          
+          # AI percentage
+          AI_PCT=$(awk "BEGIN {printf \"%.2f\", ($AI_LOC/$TOTAL_LOC)*100}")
+          
+          echo "TOTAL_LOC=$TOTAL_LOC" >> "$GITHUB_OUTPUT"
+          echo "AI_LOC=$AI_LOC" >> "$GITHUB_OUTPUT"
+          echo "AI_PCT=$AI_PCT" >> "$GITHUB_OUTPUT"
+
+      # ===== STEP 7: Generate Comprehensive Report =====
+      - name:  Generate final report
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        id: report
+        run: |
+          cat > ai_coverage_report.md <<'REPORT'
+          # 🤖 AI-Generated Code Test Coverage Report
+          
+          ## 📈 Code Statistics
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Total Lines of Code** | ${{ steps.loc_stats.outputs.TOTAL_LOC }} |
+          | **AI-Generated LOC** | ${{ steps.loc_stats.outputs.AI_LOC }} |
+          | **AI Percentage** | ${{ steps.loc_stats.outputs.AI_PCT }}% |
+          | **AI Files Tracked** | ${{ steps.ai_files.outputs.AI_FILES_COUNT }} |
+          
+          ## 🎯 Test Coverage for AI-Generated Files
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Files with Playwright Tests** | ${{ steps.ai_test_coverage.outputs.tested_files }} / ${{ steps.ai_test_coverage.outputs.total_ai_files }} |
+          | **Test Coverage** | ${{ steps.ai_test_coverage.outputs.test_coverage }}% |
+          
+          ## 📋 AI-Generated Files
+          
+          ```
+          $(cat ai_files_final.txt)
+          ```
+          
+          ## 💡 Recommendations
+          
+          REPORT
+          
+          # Add recommendations based on coverage
+          TEST_COV="${{ steps.ai_test_coverage.outputs.test_coverage }}"
+          
+          if [ -f untested_ai_files.txt ] && [ -s untested_ai_files.txt ]; then
+            echo "" >> ai_coverage_report.md
+            echo "### ⚠️  Files Without Tests" >> ai_coverage_report.md
+            echo "" >> ai_coverage_report.md
+            echo "\`\`\`" >> ai_coverage_report.md
+            cat untested_ai_files.txt >> ai_coverage_report.md
+            echo "\`\`\`" >> ai_coverage_report.md
+          fi
+          
+          if [ "$(echo "$TEST_COV < 80" | bc -l 2>/dev/null || echo 1)" -eq 1 ]; then
+            echo "" >> ai_coverage_report.md
+            echo "- ⚠️  Test coverage for AI-generated code is below 80% - consider adding Playwright tests for untested files" >> ai_coverage_report.md
+          else
+            echo "" >> ai_coverage_report.md
+            echo "- ✅ Good test coverage for AI-generated code!" >> ai_coverage_report.md
+          fi
+          
+          echo "" >> ai_coverage_report.md
+          echo "---" >> ai_coverage_report.md
+          echo "*Report generated on $(date)*" >> ai_coverage_report.md
+          
+          cat ai_coverage_report.md
+
+      - name: Upload coverage report as artifact
+        if: steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/upload-artifact@v4
+        with: 
+          name: ai-coverage-report
+          path: |
+            ai_coverage_report.md
+            playwright-report/
+            test-results/
+            ai_files_final.txt
+            untested_ai_files.txt
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.ai_files.outputs.ai_files_exist == 'true'
+        uses: actions/github-script@v7
+        with: 
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('ai_coverage_report.md', 'utf8');
+            
+            github.rest.issues. createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: No AI code found
+        if: steps.ai_files.outputs.ai_files_exist != 'true'
+        run:  |
+          echo "✅ No AI-generated code found in this repository (no commits with 'AI-Generated: true' trailer)"
+          echo "To track AI-generated code, add 'AI-Generated: true' to commit messages:"
+          echo ""
+          echo "  git commit -m 'Add feature' -m 'AI-Generated: true'"
