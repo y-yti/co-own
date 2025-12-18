@@ -190,19 +190,27 @@ test.describe('Property Search Feature', () => {
     await page.waitForSelector('.results-container');
     const bangaloreResults = page.locator('.results-header h3');
     const bangaloreText = await bangaloreResults.textContent();
+    expect(bangaloreText).toContain('found');
 
     // Change to Chennai
     await locationSelect.selectOption('Chennai');
     await page.waitForTimeout(200);
     
-    // Should show no properties (backend only has Bangalore)
-    const emptyState = page.locator('.empty-state');
-    await expect(emptyState).toBeVisible();
+    // Should show Chennai properties
+    const chennaiResults = page.locator('.results-container');
+    await expect(chennaiResults).toBeVisible();
+    const chennaiHeader = page.locator('.results-header h3');
+    const chennaiText = await chennaiHeader.textContent();
+    expect(chennaiText).toContain('found');
 
     // Change to Hyderabad
     await locationSelect.selectOption('Hyderabad');
     await page.waitForTimeout(200);
-    await expect(emptyState).toBeVisible();
+    const hyderabadResults = page.locator('.results-container');
+    await expect(hyderabadResults).toBeVisible();
+    const hyderabadHeader = page.locator('.results-header h3');
+    const hyderabadText = await hyderabadHeader.textContent();
+    expect(hyderabadText).toContain('found');
   });
 
   test('Accessibility: Search form has proper ARIA labels and roles', async ({ page }) => {

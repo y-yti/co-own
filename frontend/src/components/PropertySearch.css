@@ -1,6 +1,8 @@
 .property-search {
   width: 100%;
-  padding: 1rem 0;
+  padding: 1.5rem 2rem 2rem;
+  overflow-y: auto;
+  height: 100%;
 }
 
 .search-filters {

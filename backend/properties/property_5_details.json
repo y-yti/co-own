@@ -1,0 +1,140 @@
+{
+  "property_id": 5,
+  "property_name": "Urban Nest",
+  "total_units": 12,
+  "units": [
+    {
+      "unit_id": "U001",
+      "floor": 1,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U002",
+      "floor": 1,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U003",
+      "floor": 1,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U004",
+      "floor": 2,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U005",
+      "floor": 2,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U006",
+      "floor": 2,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U007",
+      "floor": 3,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U008",
+      "floor": 3,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U009",
+      "floor": 3,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U010",
+      "floor": 4,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U011",
+      "floor": 4,
+      "area_sft": 900,
+      "status": "sold"
+    },
+    {
+      "unit_id": "U012",
+      "floor": 4,
+      "area_sft": 900,
+      "status": "sold"
+    }
+  ],
+  "open_offers_summary": {
+    "total_units_with_offers": 0,
+    "units_available": [],
+    "total_investable_fractional_units": 0
+  },
+  "recent_transaction": [
+    {
+      "transaction_id": "TXN001",
+      "date": "2025-09-05",
+      "unit_id": "U007",
+      "price_per_sft": 6100,
+      "quantity_units": 4,
+      "total_amount": 21960000,
+      "buyer": "Suresh Bhatia"
+    },
+    {
+      "transaction_id": "TXN002",
+      "date": "2025-09-18",
+      "unit_id": "U008",
+      "price_per_sft": 6150,
+      "quantity_units": 4,
+      "total_amount": 22140000,
+      "buyer": "Nisha Agarwal"
+    },
+    {
+      "transaction_id": "TXN003",
+      "date": "2025-10-02",
+      "unit_id": "U009",
+      "price_per_sft": 6200,
+      "quantity_units": 4,
+      "total_amount": 22320000,
+      "buyer": "Tarun Mehta"
+    },
+    {
+      "transaction_id": "TXN004",
+      "date": "2025-10-20",
+      "unit_id": "U010",
+      "price_per_sft": 6250,
+      "quantity_units": 4,
+      "total_amount": 22500000,
+      "buyer": "Swati Jain"
+    },
+    {
+      "transaction_id": "TXN005",
+      "date": "2025-11-08",
+      "unit_id": "U011",
+      "price_per_sft": 6300,
+      "quantity_units": 4,
+      "total_amount": 22680000,
+      "buyer": "Rahul Chopra"
+    },
+    {
+      "transaction_id": "TXN006",
+      "date": "2025-11-25",
+      "unit_id": "U012",
+      "price_per_sft": 6350,
+      "quantity_units": 4,
+      "total_amount": 22860000,
+      "buyer": "Preeti Dutta"
+    }
+  ]
+}

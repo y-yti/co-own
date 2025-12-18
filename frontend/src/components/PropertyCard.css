@@ -108,11 +108,34 @@
   margin-top: 0.75rem;
   padding: 0.625rem;
   border-radius: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid #3b82f6;
   background: white;
   font-size: 0.875rem;
-  color: #6b7280;
-  cursor: not-allowed; /* stub */
+  color: #3b82f6;
+  cursor: pointer;
   font-weight: 500;
   transition: all 0.2s ease;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.btn-outline:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-outline:disabled {
+  border-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+
+.btn-outline:disabled:hover {
+  transform: none;
+  box-shadow: none;
 }

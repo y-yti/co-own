@@ -17,7 +17,12 @@ test.describe('App end-to-end flow', () => {
 
     // Dashboard header
     await expect(page.getByText('Co-own Investor')).toBeVisible();
-    await expect(page.getByText('Default criteria: Residential · Bangalore')).toBeVisible();
+    
+    // Should have Search tab by default
+    const searchTab = page.locator('.tab').first();
+    await expect(searchTab).toBeVisible();
+    await expect(searchTab).toContainText('Search');
+    await expect(searchTab).toHaveClass(/active/);
 
     // Wait for properties to load
     const grid = page.locator('.property-grid');

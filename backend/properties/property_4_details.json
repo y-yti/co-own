@@ -1,0 +1,185 @@
+{
+  "property_id": 4,
+  "property_name": "Skyline Towers",
+  "total_units": 16,
+  "units": [
+    {
+      "unit_id": "A101",
+      "floor": 1,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A102",
+      "floor": 1,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A103",
+      "floor": 1,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A104",
+      "floor": 1,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B101",
+      "floor": 2,
+      "area_sft": 1100,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 7600,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "B102",
+      "floor": 2,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B103",
+      "floor": 2,
+      "area_sft": 1100,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 7650,
+      "min_investment_units": 2,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "B104",
+      "floor": 2,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C101",
+      "floor": 3,
+      "area_sft": 1100,
+      "status": "partially_sold",
+      "has_open_offer": true,
+      "asking_price_per_sft": 7700,
+      "available_units": 1,
+      "sold_units": 3,
+      "total_fractional_units": 4
+    },
+    {
+      "unit_id": "C102",
+      "floor": 3,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C103",
+      "floor": 3,
+      "area_sft": 1100,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 7750,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "C104",
+      "floor": 3,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "D101",
+      "floor": 4,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "D102",
+      "floor": 4,
+      "area_sft": 1100,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 7800,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "D103",
+      "floor": 4,
+      "area_sft": 1100,
+      "status": "sold"
+    },
+    {
+      "unit_id": "D104",
+      "floor": 4,
+      "area_sft": 1100,
+      "status": "sold"
+    }
+  ],
+  "open_offers_summary": {
+    "total_units_with_offers": 5,
+    "units_available": ["B101", "B103", "C101", "C103", "D102"],
+    "total_investable_fractional_units": 17
+  },
+  "recent_transaction": [
+    {
+      "transaction_id": "TXN001",
+      "date": "2025-10-15",
+      "unit_id": "A101",
+      "price_per_sft": 7200,
+      "quantity_units": 4,
+      "total_amount": 31680000,
+      "buyer": "Nikhil Verma"
+    },
+    {
+      "transaction_id": "TXN002",
+      "date": "2025-10-25",
+      "unit_id": "A104",
+      "price_per_sft": 7300,
+      "quantity_units": 4,
+      "total_amount": 32120000,
+      "buyer": "Pooja Saxena"
+    },
+    {
+      "transaction_id": "TXN003",
+      "date": "2025-11-05",
+      "unit_id": "B102",
+      "price_per_sft": 7400,
+      "quantity_units": 4,
+      "total_amount": 32560000,
+      "buyer": "Aditya Bhatt"
+    },
+    {
+      "transaction_id": "TXN004",
+      "date": "2025-11-18",
+      "unit_id": "C101",
+      "price_per_sft": 7450,
+      "quantity_units": 3,
+      "total_amount": 24585000,
+      "buyer": "Shreya Pathak"
+    },
+    {
+      "transaction_id": "TXN005",
+      "date": "2025-12-01",
+      "unit_id": "C102",
+      "price_per_sft": 7500,
+      "quantity_units": 4,
+      "total_amount": 33000000,
+      "buyer": "Manish Sethi"
+    },
+    {
+      "transaction_id": "TXN006",
+      "date": "2025-12-12",
+      "unit_id": "D101",
+      "price_per_sft": 7550,
+      "quantity_units": 4,
+      "total_amount": 33220000,
+      "buyer": "Ritu Bansal"
+    }
+  ]
+}

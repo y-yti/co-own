@@ -18,4 +18,9 @@ test('dashboard renders skeleton and main sections after login', async ({ page }
 
   await expect(page.getByText('Co-own Investor')).toBeVisible();
   await expect(page.locator('.dashboard-main')).toBeVisible();
+  
+  // Should have Search tab
+  const searchTab = page.locator('.tab');
+  await expect(searchTab).toBeVisible();
+  await expect(searchTab.first()).toContainText('Search');
 });
