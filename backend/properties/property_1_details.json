@@ -1,0 +1,152 @@
+{
+  "property_id": 1,
+  "property_name": "Co-own Heights",
+  "total_units": 12,
+  "units": [
+    {
+      "unit_id": "A001",
+      "floor": 1,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A002",
+      "floor": 1,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A003",
+      "floor": 2,
+      "area_sft": 1200,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 6500,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "A004",
+      "floor": 2,
+      "area_sft": 1200,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 6500,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "B001",
+      "floor": 3,
+      "area_sft": 1200,
+      "status": "partially_sold",
+      "has_open_offer": true,
+      "asking_price_per_sft": 6600,
+      "available_units": 2,
+      "sold_units": 2,
+      "total_fractional_units": 4
+    },
+    {
+      "unit_id": "B002",
+      "floor": 3,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B003",
+      "floor": 4,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B004",
+      "floor": 4,
+      "area_sft": 1200,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 6700,
+      "min_investment_units": 2,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "C001",
+      "floor": 5,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C002",
+      "floor": 5,
+      "area_sft": 1200,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C003",
+      "floor": 6,
+      "area_sft": 1200,
+      "status": "available",
+      "has_open_offer": true,
+      "asking_price_per_sft": 6800,
+      "min_investment_units": 1,
+      "max_investment_units": 4
+    },
+    {
+      "unit_id": "C004",
+      "floor": 6,
+      "area_sft": 1200,
+      "status": "sold"
+    }
+  ],
+  "open_offers_summary": {
+    "total_units_with_offers": 5,
+    "units_available": ["A003", "A004", "B001", "B004", "C003"],
+    "total_investable_fractional_units": 18
+  },
+  "recent_transaction": [
+    {
+      "transaction_id": "TXN001",
+      "date": "2025-11-15",
+      "unit_id": "A001",
+      "price_per_sft": 6200,
+      "quantity_units": 4,
+      "total_amount": 29760000,
+      "buyer": "Rajesh Kumar"
+    },
+    {
+      "transaction_id": "TXN002",
+      "date": "2025-11-20",
+      "unit_id": "A002",
+      "price_per_sft": 6300,
+      "quantity_units": 4,
+      "total_amount": 30240000,
+      "buyer": "Priya Sharma"
+    },
+    {
+      "transaction_id": "TXN003",
+      "date": "2025-11-25",
+      "unit_id": "B001",
+      "price_per_sft": 6400,
+      "quantity_units": 2,
+      "total_amount": 15360000,
+      "buyer": "Amit Patel"
+    },
+    {
+      "transaction_id": "TXN004",
+      "date": "2025-12-01",
+      "unit_id": "B002",
+      "price_per_sft": 6450,
+      "quantity_units": 4,
+      "total_amount": 30960000,
+      "buyer": "Sneha Reddy"
+    },
+    {
+      "transaction_id": "TXN005",
+      "date": "2025-12-05",
+      "unit_id": "B003",
+      "price_per_sft": 6500,
+      "quantity_units": 4,
+      "total_amount": 31200000,
+      "buyer": "Vikram Singh"
+    }
+  ]
+}

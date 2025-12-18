@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import PropertyCard from "./PropertyCard";
 import "./PropertySearch.css";
 
-function PropertySearch() {
+function PropertySearch({ onOpenProperty }) {
   const [location, setLocation] = useState("Bangalore");
   const [propertyTypes, setPropertyTypes] = useState({ residential: true, commercial: false });
   const [properties, setProperties] = useState([]);
@@ -178,7 +178,7 @@ function PropertySearch() {
             </div>
             <div className="property-grid">
               {filteredProperties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
+                <PropertyCard key={property.id} property={property} onOpenProperty={onOpenProperty} />
               ))}
             </div>
           </div>

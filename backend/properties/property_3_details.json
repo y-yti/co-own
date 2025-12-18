@@ -1,0 +1,152 @@
+{
+  "property_id": 3,
+  "property_name": "Greenwoods Enclave",
+  "total_units": 14,
+  "units": [
+    {
+      "unit_id": "A001",
+      "floor": 1,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "A002",
+      "floor": 1,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B001",
+      "floor": 2,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "B002",
+      "floor": 2,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C001",
+      "floor": 3,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "C002",
+      "floor": 3,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "D001",
+      "floor": 4,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "D002",
+      "floor": 4,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "E001",
+      "floor": 5,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "E002",
+      "floor": 5,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "F001",
+      "floor": 6,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "F002",
+      "floor": 6,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "G001",
+      "floor": 7,
+      "area_sft": 1450,
+      "status": "sold"
+    },
+    {
+      "unit_id": "G002",
+      "floor": 7,
+      "area_sft": 1450,
+      "status": "sold"
+    }
+  ],
+  "open_offers_summary": {
+    "total_units_with_offers": 0,
+    "units_available": [],
+    "total_investable_fractional_units": 0
+  },
+  "recent_transaction": [
+    {
+      "transaction_id": "TXN001",
+      "date": "2025-09-10",
+      "unit_id": "C001",
+      "price_per_sft": 6600,
+      "quantity_units": 4,
+      "total_amount": 38280000,
+      "buyer": "Sanjay Gupta"
+    },
+    {
+      "transaction_id": "TXN002",
+      "date": "2025-09-22",
+      "unit_id": "D002",
+      "price_per_sft": 6700,
+      "quantity_units": 4,
+      "total_amount": 38860000,
+      "buyer": "Anita Joshi"
+    },
+    {
+      "transaction_id": "TXN003",
+      "date": "2025-10-05",
+      "unit_id": "E001",
+      "price_per_sft": 6750,
+      "quantity_units": 4,
+      "total_amount": 39150000,
+      "buyer": "Ramesh Pillai"
+    },
+    {
+      "transaction_id": "TXN004",
+      "date": "2025-10-18",
+      "unit_id": "F001",
+      "price_per_sft": 6800,
+      "quantity_units": 4,
+      "total_amount": 39440000,
+      "buyer": "Deepa Krishnan"
+    },
+    {
+      "transaction_id": "TXN005",
+      "date": "2025-11-12",
+      "unit_id": "G001",
+      "price_per_sft": 6850,
+      "quantity_units": 4,
+      "total_amount": 39730000,
+      "buyer": "Varun Malhotra"
+    },
+    {
+      "transaction_id": "TXN006",
+      "date": "2025-11-28",
+      "unit_id": "G002",
+      "price_per_sft": 6900,
+      "quantity_units": 4,
+      "total_amount": 40020000,
+      "buyer": "Lakshmi Venkat"
+    }
+  ]
+}

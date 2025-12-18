@@ -1,6 +1,6 @@
 import "./PropertyCard.css";
 
-function PropertyCard({ property }) {
+function PropertyCard({ property, onOpenProperty }) {
   const {
     name,
     address,
@@ -10,6 +10,7 @@ function PropertyCard({ property }) {
     type,
     lat,
     lng,
+    hasOpenOffers,
   } = property;
 
   const totalPrice = area_sft * price_per_sft;
@@ -70,8 +71,8 @@ function PropertyCard({ property }) {
         </div>
       </div>
 
-      <button className="btn-outline" disabled>
-        View & Make Offer (stub)
+      <button className="btn-outline" disabled={!hasOpenOffers} onClick={() => onOpenProperty(property)}>
+        {hasOpenOffers ? "View & Make Offer" : "No Offers Available"}
       </button>
     </div>
   );
