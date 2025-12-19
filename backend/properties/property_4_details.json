@@ -35,7 +35,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7600,
       "min_investment_units": 1,
-      "max_investment_units": 4
+      "max_investment_units": 410
     },
     {
       "unit_id": "B102",
@@ -51,7 +51,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7650,
       "min_investment_units": 2,
-      "max_investment_units": 4
+      "max_investment_units": 245
     },
     {
       "unit_id": "B104",
@@ -84,7 +84,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7750,
       "min_investment_units": 1,
-      "max_investment_units": 4
+      "max_investment_units": 1000
     },
     {
       "unit_id": "C104",
@@ -106,7 +106,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7800,
       "min_investment_units": 1,
-      "max_investment_units": 4
+      "max_investment_units": 400   
     },
     {
       "unit_id": "D103",

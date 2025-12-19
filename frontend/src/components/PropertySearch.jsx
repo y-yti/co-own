@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import PropertyCard from "./PropertyCard";
+import { propertyService } from "../services/api";
 import "./PropertySearch.css";
 
 function PropertySearch({ onOpenProperty }) {
@@ -32,8 +33,7 @@ function PropertySearch({ onOpenProperty }) {
   useEffect(() => {
     async function fetchAllProperties() {
       try {
-        const res = await fetch("http://localhost:8000/properties");
-        const data = await res.json();
+        const data = await propertyService.getAll();
         setProperties(data.items || []);
       } catch (err) {
         console.error("Error fetching properties:", err);

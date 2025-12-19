@@ -23,7 +23,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7200,
       "min_investment_units": 1,
-      "max_investment_units": 4
+      "max_investment_units": 205
     },
     {
       "unit_id": "B002",
@@ -35,12 +35,11 @@
       "unit_id": "C001",
       "floor": 3,
       "area_sft": 980,
-      "status": "partially_sold",
+      "status": "available",
       "has_open_offer": true,
       "asking_price_per_sft": 7300,
-      "available_units": 3,
-      "sold_units": 1,
-      "total_fractional_units": 4
+      "min_investment_units": 1,
+      "max_investment_units": 255
     },
     {
       "unit_id": "C002",
@@ -50,7 +49,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7250,
       "min_investment_units": 2,
-      "max_investment_units": 4
+      "max_investment_units": 980
     },
     {
       "unit_id": "D001",
@@ -72,7 +71,7 @@
       "has_open_offer": true,
       "asking_price_per_sft": 7400,
       "min_investment_units": 1,
-      "max_investment_units": 4
+      "max_investment_units": 455
     },
     {
       "unit_id": "E002",
