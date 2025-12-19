@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { propertyService } from "../services/api";
 import "./PropertyDetail.css";
 
 function PropertyDetail({ property, onClose }) {
@@ -10,11 +11,7 @@ function PropertyDetail({ property, onClose }) {
     async function fetchPropertyDetails() {
       try {
         setLoading(true);
-        const res = await fetch(`http://localhost:8000/properties/${property.id}/details`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch property details");
-        }
-        const data = await res.json();
+        const data = await propertyService.getDetails(property.id);
         setPropertyDetails(data);
       } catch (err) {
         console.error("Error fetching property details:", err);
@@ -97,15 +94,11 @@ function PropertyDetail({ property, onClose }) {
                           <td>₹{unit.asking_price_per_sft?.toLocaleString()}</td>
                           <td>
                             <span className={`status-badge ${unit.status}`}>
-                              {unit.status === "partially_sold"
-                                ? "Partially Available"
-                                : "Available"}
+                              Available
                             </span>
                           </td>
                           <td>
-                            {unit.status === "partially_sold"
-                              ? `${unit.available_units} of ${unit.total_fractional_units}`
-                              : `${unit.min_investment_units}-${unit.max_investment_units}`}
+                            {unit.max_investment_units}
                           </td>
                         </tr>
                       ))}
