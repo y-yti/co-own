@@ -33,11 +33,11 @@ jobs:
       - name: Compute AI-generated LOC from git trailers
         id: ai_loc
         run: |
-          # Get all commits that have trailer 'AI-Generated: true'
-          git log --all --grep='AI-Generated: true' --format='%H' > ai_commits.txt
+          # Get all commits that have trailer 'AI-Generated: true' or 'Co-authored-by: Copilot'
+          git log --all --grep='AI-Generated: true' --grep='Co-authored-by: Copilot' --format='%H' > ai_commits.txt
 
           if [ ! -s ai_commits.txt ]; then
-            echo "No AI-Generated: true commits found"
+            echo "No AI-Generated commits found"
             echo "AI_LOC=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
