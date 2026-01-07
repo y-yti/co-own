@@ -100,7 +100,7 @@ test.describe('Property Detail Component', () => {
     await expect(headers.nth(2)).toContainText('Area');
     await expect(headers.nth(3)).toContainText('Asking Price');
     await expect(headers.nth(4)).toContainText('Status');
-    await expect(headers.nth(5)).toContainText('Available Units');
+    await expect(headers.nth(5)).toContainText('Available(SQFT)');
     
     // Verify at least one row exists
     const rows = unitsTable.locator('tbody tr');
@@ -289,5 +289,44 @@ test.describe('Property Detail Component', () => {
       const badgeClass = await firstBadge.getAttribute('class');
       expect(badgeClass).toMatch(/available|partially_sold/);
     }
+  });
+
+  test('column header displays "Available(SQFT)" instead of "Available Units"', async ({ page }) => {
+    // Find and click a property with open offers
+    const cards = page.locator('.property-card');
+    const count = await cards.count();
+    
+    let propertyOpened = false;
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const button = card.locator('button.btn-outline');
+      const isEnabled = await button.isEnabled();
+      
+      if (isEnabled) {
+        await button.click();
+        propertyOpened = true;
+        break;
+      }
+    }
+    
+    expect(propertyOpened).toBeTruthy();
+    
+    // Wait for detail to load
+    await page.waitForTimeout(500);
+    
+    const detailContainer = page.locator('.property-detail-container');
+    const unitsTable = detailContainer.locator('.units-table');
+    
+    // Verify units table exists
+    await expect(unitsTable).toBeVisible();
+    
+    // Verify the sixth column header is exactly "Available(SQFT)"
+    const sixthHeader = unitsTable.locator('thead th').nth(5);
+    await expect(sixthHeader).toBeVisible();
+    await expect(sixthHeader).toHaveText('Available(SQFT)');
+    
+    // Verify it's not the old text "Available Units"
+    const headerText = await sixthHeader.textContent();
+    expect(headerText).not.toBe('Available Units');
   });
 });

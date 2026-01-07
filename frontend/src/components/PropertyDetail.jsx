@@ -80,7 +80,7 @@ function PropertyDetail({ property, onClose }) {
                       <th>Area (sqft)</th>
                       <th>Asking Price/sqft</th>
                       <th>Status</th>
-                      <th>Available Units</th>
+                      <th>Available(SQFT)</th>
                     </tr>
                   </thead>
                   <tbody>
