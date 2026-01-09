@@ -34,18 +34,19 @@ jobs:
             pip install -r requirements.txt
 
     - name: Start backend server
-      run: |            
+      run: |
+            cd backend
             uvicorn main:app --host 127.0.0.1 --port 8000 &
             sleep 3
 
     - name: Install frontend dependencies
       run: |
-            cd ..
             cd frontend
             npm ci
 
     - name: Start frontend server
       run: |
+            cd frontend
             npm run dev &
             sleep 5
 
