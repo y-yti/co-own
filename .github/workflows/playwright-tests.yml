@@ -48,9 +48,6 @@ jobs:
             npm run dev &
             sleep 5
 
-    - name: Wait for servers
-      run: npx wait-on http://localhost:5173 http://127.0.0.1:8000 --timeout 300
-
     - name: Install dependencies
       run: npm ci
 
