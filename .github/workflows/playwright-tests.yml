@@ -35,18 +35,18 @@ jobs:
 
     - name: Start backend server
       run: |
-            cd backend
+            working-directory: backend
             uvicorn main:app --host 127.0.0.1 --port 8000 &
             sleep 3
 
     - name: Install frontend dependencies
       run: |
-            cd frontend
+            working-directory:  frontend
             npm ci
 
     - name: Start frontend server
       run: |
-            cd frontend
+            working-directory:  frontend
             npm run dev &
             sleep 5
 
