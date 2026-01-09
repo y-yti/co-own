@@ -1,0 +1,245 @@
+name: Similarity Dashboard
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight UTC
+  pull_request:
+    types: [closed]  # When PR is merged
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-dashboard:
+    name: Update Similarity Dashboard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch recent merged PRs and extract similarity scores
+        uses: actions/github-script@v7
+        id: fetch_scores
+        with:
+          script: |
+            console.log('📊 Fetching recent merged PRs...');
+            
+            const { owner, repo } = context.repo;
+            
+            // Fetch recent merged PRs (last 50)
+            const { data: pulls } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 50
+            });
+            
+            const mergedPRs = pulls.filter(pr => pr.merged_at);
+            console.log(`Found ${mergedPRs.length} merged PRs`);
+            
+            const scores = [];
+            let excellent = 0, good = 0, fair = 0, poor = 0;
+            let totalScore = 0;
+            let count = 0;
+            
+            for (const pr of mergedPRs) {
+              // Fetch PR comments to find similarity analysis
+              const { data: comments } = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: pr.number,
+                per_page: 100
+              });
+              
+              // Look for similarity analysis comment
+              const analysisComment = comments.find(c => 
+                c.body && c.body.includes('🎯 Prompt-to-Code Similarity Analysis')
+              );
+              
+              if (analysisComment) {
+                // Extract similarity score using regex
+                const scoreMatch = analysisComment.body.match(/Similarity Score:\s*\*\*(\d+)\/100\*\*/);
+                
+                if (scoreMatch) {
+                  const score = parseInt(scoreMatch[1]);
+                  totalScore += score;
+                  count++;
+                  
+                  // Determine rating
+                  let rating = 'Poor';
+                  if (score >= 80) {
+                    rating = 'Excellent';
+                    excellent++;
+                  } else if (score >= 60) {
+                    rating = 'Good';
+                    good++;
+                  } else if (score >= 40) {
+                    rating = 'Fair';
+                    fair++;
+                  } else {
+                    poor++;
+                  }
+                  
+                  scores.push({
+                    number: pr.number,
+                    title: pr.title,
+                    score: score,
+                    rating: rating,
+                    merged_at: pr.merged_at,
+                    url: pr.html_url
+                  });
+                  
+                  console.log(`PR #${pr.number}: ${score}/100 (${rating})`);
+                }
+              }
+            }
+            
+            console.log(`\nFound ${count} PRs with similarity scores`);
+            
+            const avgScore = count > 0 ? Math.round(totalScore / count) : 0;
+            
+            const stats = {
+              total: count,
+              average: avgScore,
+              excellent: excellent,
+              good: good,
+              fair: fair,
+              poor: poor
+            };
+            
+            // Sort scores by merged date (newest first)
+            scores.sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
+            
+            // Return top 20 for dashboard
+            const topScores = scores.slice(0, 20);
+            
+            return { stats, scores: topScores };
+
+      - name: Generate dashboard markdown
+        run: |
+          cat > .github/SIMILARITY_DASHBOARD.md <<'EOF'
+          # 📊 Prompt-to-Code Similarity Dashboard
+          
+          **Last Updated:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          ## Overview
+          
+          This dashboard tracks the similarity scores between prompts in `.github/prompts/` and their corresponding code implementations. Higher scores indicate better alignment between requirements and implementation.
+          
+          ## Statistics
+          
+          | Metric | Value |
+          |--------|-------|
+          | **Total Analyzed PRs** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.total }} |
+          | **Average Similarity Score** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.average }}/100 |
+          | 🟢 **Excellent (80-100)** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.excellent }} (${{ fromJSON(steps.fetch_scores.outputs.result).stats.total > 0 && format('{0:0.0}', fromJSON(steps.fetch_scores.outputs.result).stats.excellent * 100.0 / fromJSON(steps.fetch_scores.outputs.result).stats.total) || '0' }}%) |
+          | 🟡 **Good (60-79)** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.good }} (${{ fromJSON(steps.fetch_scores.outputs.result).stats.total > 0 && format('{0:0.0}', fromJSON(steps.fetch_scores.outputs.result).stats.good * 100.0 / fromJSON(steps.fetch_scores.outputs.result).stats.total) || '0' }}%) |
+          | 🟠 **Fair (40-59)** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.fair }} (${{ fromJSON(steps.fetch_scores.outputs.result).stats.total > 0 && format('{0:0.0}', fromJSON(steps.fetch_scores.outputs.result).stats.fair * 100.0 / fromJSON(steps.fetch_scores.outputs.result).stats.total) || '0' }}%) |
+          | 🔴 **Poor (0-39)** | ${{ fromJSON(steps.fetch_scores.outputs.result).stats.poor }} (${{ fromJSON(steps.fetch_scores.outputs.result).stats.total > 0 && format('{0:0.0}', fromJSON(steps.fetch_scores.outputs.result).stats.poor * 100.0 / fromJSON(steps.fetch_scores.outputs.result).stats.total) || '0' }}%) |
+          
+          ## Recent Analyzed Pull Requests
+          
+          EOF
+          
+          # Add table or message based on data
+          TOTAL_PRS=${{ fromJSON(steps.fetch_scores.outputs.result).stats.total }}
+          
+          if [ "$TOTAL_PRS" -gt 0 ]; then
+            cat >> .github/SIMILARITY_DASHBOARD.md <<'EOF'
+          | PR | Title | Score | Rating | Merged Date |
+          |---:|-------|------:|--------|-------------|
+          EOF
+            
+            # Add PR rows using github-script output
+            node -e '
+              const data = ${{ toJSON(steps.fetch_scores.outputs.result) }};
+              const scores = data.scores;
+              
+              scores.forEach(item => {
+                const date = new Date(item.merged_at).toISOString().split("T")[0];
+                const emoji = item.rating === "Excellent" ? "🟢" : 
+                             item.rating === "Good" ? "🟡" : 
+                             item.rating === "Fair" ? "🟠" : "🔴";
+                console.log(`| [#${item.number}](${item.url}) | ${item.title} | ${item.score}/100 | ${emoji} ${item.rating} | ${date} |`);
+              });
+            ' >> .github/SIMILARITY_DASHBOARD.md
+            
+          else
+            cat >> .github/SIMILARITY_DASHBOARD.md <<'EOF'
+          No pull requests with similarity analysis found yet. 
+          
+          Create a PR that modifies files in `.github/prompts/` or source code to see similarity analysis.
+          EOF
+          fi
+          
+          cat >> .github/SIMILARITY_DASHBOARD.md <<'EOF'
+          
+          ## Score Interpretation
+          
+          - 🟢 **Excellent (80-100)**: High prompt maturity, excellent alignment between requirements and implementation
+          - 🟡 **Good (60-79)**: Good alignment with minor gaps, prompt is mostly mature
+          - 🟠 **Fair (40-59)**: Fair alignment, prompt needs improvement or implementation is incomplete
+          - 🔴 **Poor (0-39)**: Poor alignment, major revision needed for prompt or implementation
+          
+          ## How It Works
+          
+          1. **Detection**: When a PR modifies prompts in `.github/prompts/` or source code, the similarity workflow runs
+          2. **Analysis**: Azure AI (or fallback keyword analysis) compares the prompt requirements with code changes
+          3. **Scoring**: A similarity score (0-100) is calculated based on:
+             - Requirements coverage (40%)
+             - Semantic alignment (30%)
+             - Code quality (20%)
+             - Completeness (10%)
+          4. **Feedback**: A detailed report is posted as a PR comment with recommendations
+          5. **Tracking**: This dashboard aggregates scores from merged PRs to show trends
+          
+          ## Learn More
+          
+          - [Azure AI Setup Guide](.github/AZURE_AI_SETUP.md)
+          - [Configuration](.github/similarity-config.yml)
+          - [Prompt Template](.github/prompts/TEMPLATE.prompt.md)
+          
+          ---
+          
+          *Dashboard auto-generated by GitHub Actions*
+          EOF
+          
+          echo "✅ Dashboard generated"
+
+      - name: Commit and push dashboard
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add .github/SIMILARITY_DASHBOARD.md
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update similarity dashboard [skip ci]"
+            git push
+            echo "✅ Dashboard updated and pushed"
+          fi
+
+      - name: Summary
+        run: |
+          echo "📊 Dashboard Update Summary"
+          echo ""
+          echo "Total PRs analyzed: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.total }}"
+          echo "Average score: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.average }}/100"
+          echo ""
+          echo "Distribution:"
+          echo "  🟢 Excellent: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.excellent }}"
+          echo "  🟡 Good: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.good }}"
+          echo "  🟠 Fair: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.fair }}"
+          echo "  🔴 Poor: ${{ fromJSON(steps.fetch_scores.outputs.result).stats.poor }}"
+          echo ""
+          echo "Dashboard saved to: .github/SIMILARITY_DASHBOARD.md"

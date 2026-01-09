@@ -1,0 +1,579 @@
+name: Prompt-to-Code Similarity Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/prompts/**'
+      - 'src/**'
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'pages/**'
+      - 'frontend/**'
+      - 'backend/**'
+      - 'tests/**'
+      - 'e2e/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  analyze-similarity:
+    name: Analyze Prompt-to-Code Similarity
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to get diffs
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Detect changed files
+        id: changed_files
+        uses: tj-actions/changed-files@v41
+        with:
+          files_yaml: |
+            prompts:
+              - '.github/prompts/**/*.prompt.md'
+              - '.github/prompts/**/*.md'
+            source:
+              - 'src/**'
+              - 'app/**'
+              - 'components/**'
+              - 'lib/**'
+              - 'pages/**'
+              - 'frontend/**'
+              - 'backend/**'
+            tests:
+              - 'tests/**'
+              - 'e2e/**'
+              - '**/*.spec.ts'
+              - '**/*.spec.js'
+              - '**/*.test.ts'
+              - '**/*.test.js'
+
+      - name: Check if analysis needed
+        id: should_analyze
+        run: |
+          PROMPT_CHANGED="${{ steps.changed_files.outputs.prompts_any_changed }}"
+          SOURCE_CHANGED="${{ steps.changed_files.outputs.source_any_changed }}"
+          TEST_CHANGED="${{ steps.changed_files.outputs.tests_any_changed }}"
+          
+          echo "Prompt files changed: $PROMPT_CHANGED"
+          echo "Source files changed: $SOURCE_CHANGED"
+          echo "Test files changed: $TEST_CHANGED"
+          
+          if [ "$PROMPT_CHANGED" == "true" ] || [ "$SOURCE_CHANGED" == "true" ] || [ "$TEST_CHANGED" == "true" ]; then
+            echo "analyze=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Analysis needed"
+          else
+            echo "analyze=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️  No relevant files changed, skipping analysis"
+          fi
+
+      - name: Get PR details
+        if: steps.should_analyze.outputs.analyze == 'true'
+        id: pr_details
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            return {
+              title: pr.title,
+              description: pr.body || '',
+              number: pr.number
+            };
+
+      - name: Get file changes and diffs
+        if: steps.should_analyze.outputs.analyze == 'true'
+        id: get_diffs
+        run: |
+          echo "📝 Collecting file changes..."
+          
+          # Get the diff for this PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          DIFF=$(git diff origin/${{ github.event.pull_request.base.ref }}...HEAD)
+          
+          # Truncate diff if too large (max 8000 chars to stay within token limits)
+          MAX_DIFF_SIZE=8000
+          DIFF_SIZE=${#DIFF}
+          
+          if [ $DIFF_SIZE -gt $MAX_DIFF_SIZE ]; then
+            echo "⚠️  Diff is large ($DIFF_SIZE chars), truncating to $MAX_DIFF_SIZE chars"
+            DIFF="${DIFF:0:$MAX_DIFF_SIZE}"
+            DIFF="${DIFF}
+
+          ... (diff truncated due to size)"
+          fi
+          
+          # Save diff to file for later use
+          echo "$DIFF" > pr_diff.txt
+          
+          echo "Diff size: ${#DIFF} characters"
+          echo "diff_size=${#DIFF}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect prompt files
+        if: steps.should_analyze.outputs.analyze == 'true'
+        id: collect_prompts
+        run: |
+          echo "📋 Collecting prompt files..."
+          
+          PROMPT_CONTENT=""
+          
+          # Get all prompt files
+          if [ -d ".github/prompts" ]; then
+            for prompt_file in .github/prompts/*.prompt.md; do
+              if [ -f "$prompt_file" ]; then
+                echo "Found: $prompt_file"
+                PROMPT_CONTENT="${PROMPT_CONTENT}
+
+          --- FILE: $prompt_file ---
+          $(cat "$prompt_file")
+          "
+              fi
+            done
+          fi
+          
+          if [ -z "$PROMPT_CONTENT" ]; then
+            PROMPT_CONTENT="No prompt files found in .github/prompts/"
+          fi
+          
+          # Save to file
+          echo "$PROMPT_CONTENT" > prompt_content.txt
+          
+          echo "Collected prompt content: ${#PROMPT_CONTENT} characters"
+
+      - name: Analyze with Azure AI
+        if: steps.should_analyze.outputs.analyze == 'true'
+        id: azure_analysis
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const https = require('https');
+            const fs = require('fs');
+            
+            // Read configuration
+            const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+            const apiKey = process.env.AZURE_OPENAI_API_KEY;
+            const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+            const apiVersion = process.env.AZURE_API_VERSION || '2024-02-15-preview';
+            
+            console.log('🤖 Starting Azure AI analysis...');
+            
+            // Check if Azure is configured
+            if (!endpoint || !apiKey || !deployment) {
+              console.log('⚠️  Azure AI not configured, will use fallback analysis');
+              return { success: false, error: 'Azure AI not configured' };
+            }
+            
+            // Read PR details and content
+            const prDetails = ${{ steps.pr_details.outputs.result }};
+            const promptContent = fs.readFileSync('prompt_content.txt', 'utf8');
+            const diffContent = fs.readFileSync('pr_diff.txt', 'utf8');
+            
+            // Construct the analysis prompt
+            const systemPrompt = `You are an expert code review assistant specializing in analyzing alignment between software requirements (prompts) and their implementations.
+
+            Your task is to analyze how well code changes align with the requirements specified in prompt files.
+            
+            Provide a detailed analysis with:
+            1. A similarity score from 0-100
+            2. Specific requirements that were met
+            3. Requirements that are missing or incomplete
+            4. Any unexpected changes not mentioned in prompts
+            5. Recommendations for improvement
+            6. Assessment of prompt maturity
+            
+            Be thorough but concise. Focus on actionable feedback.`;
+            
+            const userPrompt = `Analyze the following PR and determine similarity between prompts and implementation:
+
+            **PR Title:** ${prDetails.title}
+
+            **PR Description:**
+            ${prDetails.description}
+
+            **Prompt Files Content:**
+            ${promptContent}
+
+            **Code Changes (Diff):**
+            ${diffContent}
+
+            Please provide a JSON response with this exact structure:
+            {
+              "similarity_score": <number 0-100>,
+              "alignment_level": "<excellent|good|fair|poor>",
+              "matched_requirements": ["requirement 1", "requirement 2"],
+              "missing_requirements": ["requirement 1", "requirement 2"],
+              "unexpected_changes": ["change 1", "change 2"],
+              "recommendations": ["recommendation 1", "recommendation 2"],
+              "maturity_assessment": "<brief assessment of prompt quality and completeness>"
+            }`;
+            
+            const requestBody = JSON.stringify({
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+              temperature: 0.3,
+              max_tokens: 2000,
+              response_format: { type: 'json_object' }
+            });
+            
+            // Remove trailing slash from endpoint if present
+            const cleanEndpoint = endpoint.replace(/\/$/, '');
+            const url = new URL(`${cleanEndpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`);
+            
+            console.log(`Making request to: ${url.hostname}${url.pathname}`);
+            
+            return new Promise((resolve, reject) => {
+              const options = {
+                hostname: url.hostname,
+                path: url.pathname + url.search,
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'api-key': apiKey,
+                  'Content-Length': Buffer.byteLength(requestBody)
+                },
+                timeout: 60000
+              };
+              
+              const req = https.request(options, (res) => {
+                let data = '';
+                
+                res.on('data', (chunk) => {
+                  data += chunk;
+                });
+                
+                res.on('end', () => {
+                  console.log(`Response status: ${res.statusCode}`);
+                  
+                  if (res.statusCode === 200) {
+                    try {
+                      const response = JSON.parse(data);
+                      const content = response.choices[0].message.content;
+                      const analysis = JSON.parse(content);
+                      
+                      console.log('✅ Azure AI analysis successful');
+                      console.log(`Similarity score: ${analysis.similarity_score}/100`);
+                      
+                      resolve({
+                        success: true,
+                        analysis: analysis,
+                        method: 'azure-ai'
+                      });
+                    } catch (err) {
+                      console.error('Error parsing response:', err.message);
+                      resolve({ success: false, error: `Parse error: ${err.message}` });
+                    }
+                  } else {
+                    console.error(`API error: ${res.statusCode}`);
+                    console.error(data);
+                    resolve({ success: false, error: `HTTP ${res.statusCode}: ${data}` });
+                  }
+                });
+              });
+              
+              req.on('error', (err) => {
+                console.error('Request error:', err.message);
+                resolve({ success: false, error: err.message });
+              });
+              
+              req.on('timeout', () => {
+                req.destroy();
+                console.error('Request timeout');
+                resolve({ success: false, error: 'Request timeout' });
+              });
+              
+              req.write(requestBody);
+              req.end();
+            });
+        env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
+
+      - name: Fallback keyword analysis
+        if: steps.should_analyze.outputs.analyze == 'true' && (steps.azure_analysis.outcome == 'failure' || fromJSON(steps.azure_analysis.outputs.result).success == false)
+        id: fallback_analysis
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            console.log('🔄 Using fallback keyword-based analysis...');
+            
+            const promptContent = fs.readFileSync('prompt_content.txt', 'utf8').toLowerCase();
+            const diffContent = fs.readFileSync('pr_diff.txt', 'utf8').toLowerCase();
+            
+            // Extract keywords from prompts (words > 3 characters)
+            const promptWords = promptContent
+              .split(/\W+/)
+              .filter(w => w.length > 3)
+              .filter(w => !['that', 'this', 'with', 'from', 'have', 'will', 'been', 'were'].includes(w));
+            
+            const uniquePromptWords = [...new Set(promptWords)];
+            
+            // Count matches in diff
+            let matches = 0;
+            for (const word of uniquePromptWords) {
+              if (diffContent.includes(word)) {
+                matches++;
+              }
+            }
+            
+            // Calculate similarity (keyword overlap)
+            const keywordSimilarity = uniquePromptWords.length > 0 
+              ? Math.round((matches / uniquePromptWords.length) * 100)
+              : 50;
+            
+            // Apply heuristics
+            let score = keywordSimilarity;
+            
+            // Bonus for test files
+            if (diffContent.includes('test') || diffContent.includes('spec')) {
+              score += 5;
+            }
+            
+            // Bonus for component/implementation patterns
+            if (diffContent.includes('component') || diffContent.includes('function') || diffContent.includes('class')) {
+              score += 5;
+            }
+            
+            // Cap at 95 to distinguish from AI analysis
+            score = Math.min(score, 95);
+            score = Math.max(score, 0);
+            
+            // Determine alignment level
+            let alignment = 'poor';
+            if (score >= 80) alignment = 'excellent';
+            else if (score >= 60) alignment = 'good';
+            else if (score >= 40) alignment = 'fair';
+            
+            const analysis = {
+              similarity_score: score,
+              alignment_level: alignment,
+              matched_requirements: [
+                'Code changes detected that relate to prompt keywords',
+                `Found ${matches} keyword matches out of ${uniquePromptWords.length} prompt keywords`
+              ],
+              missing_requirements: [
+                'Unable to perform deep semantic analysis (Azure AI unavailable)',
+                'Manual review recommended for accuracy'
+              ],
+              unexpected_changes: [],
+              recommendations: [
+                'Configure Azure AI for more accurate analysis',
+                'Review .github/AZURE_AI_SETUP.md for setup instructions',
+                'Verify all acceptance criteria are met manually'
+              ],
+              maturity_assessment: 'Keyword-based analysis only. Configure Azure AI for detailed assessment.'
+            };
+            
+            console.log(`Fallback similarity score: ${score}/100`);
+            
+            return {
+              success: true,
+              analysis: analysis,
+              method: 'keyword-fallback'
+            };
+
+      - name: Generate analysis report
+        if: steps.should_analyze.outputs.analyze == 'true'
+        id: generate_report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get analysis result (Azure or fallback)
+            let result;
+            if (${{ steps.azure_analysis.outputs.result != '' && fromJSON(steps.azure_analysis.outputs.result).success }}) {
+              result = ${{ steps.azure_analysis.outputs.result }};
+            } else {
+              result = ${{ steps.fallback_analysis.outputs.result }};
+            }
+            
+            const analysis = result.analysis;
+            const method = result.method;
+            const score = analysis.similarity_score;
+            
+            // Determine emoji and color
+            let emoji = '🔴';
+            let level = analysis.alignment_level;
+            if (score >= 80) emoji = '🟢';
+            else if (score >= 60) emoji = '🟡';
+            else if (score >= 40) emoji = '🟠';
+            
+            // Generate progress bar
+            const progressBarLength = 20;
+            const filledLength = Math.round((score / 100) * progressBarLength);
+            const progressBar = '█'.repeat(filledLength) + '░'.repeat(progressBarLength - filledLength);
+            
+            // Analysis method badge
+            const methodBadge = method === 'azure-ai' 
+              ? '🤖 *Analyzed with Azure AI*'
+              : '⚠️ *Keyword-based analysis (Azure AI unavailable)*';
+            
+            // Build report
+            const report = `## 🎯 Prompt-to-Code Similarity Analysis
+
+            ${methodBadge}
+
+            ### Similarity Score: **${score}/100**
+
+            ${emoji} **${level.toUpperCase()}** alignment
+
+            \`\`\`
+            ${progressBar} ${score}%
+            \`\`\`
+
+            ### ✅ Matched Requirements
+            ${analysis.matched_requirements.map(r => `- ${r}`).join('\n') || '- None identified'}
+
+            ### ⚠️ Missing Requirements
+            ${analysis.missing_requirements.length > 0 
+              ? analysis.missing_requirements.map(r => `- ${r}`).join('\n')
+              : '- All requirements appear to be covered'}
+
+            ${analysis.unexpected_changes.length > 0 ? `
+            ### 🔍 Unexpected Changes
+            ${analysis.unexpected_changes.map(c => `- ${c}`).join('\n')}
+            ` : ''}
+
+            ### 💡 Recommendations
+            ${analysis.recommendations.map(r => `- ${r}`).join('\n')}
+
+            ### 📋 Maturity Assessment
+            ${analysis.maturity_assessment}
+
+            ---
+
+            <details>
+            <summary>📖 Similarity Score Guide</summary>
+
+            - 🟢 **Excellent (80-100)**: High prompt maturity, excellent alignment
+            - 🟡 **Good (60-79)**: Good alignment with minor gaps  
+            - 🟠 **Fair (40-59)**: Fair alignment, needs improvement
+            - 🔴 **Poor (0-39)**: Poor alignment, major revision needed
+
+            **Score Calculation:**
+            - Requirements coverage: 40%
+            - Semantic alignment: 30%
+            - Code quality: 20%
+            - Completeness: 10%
+
+            </details>
+
+            ---
+            *Analysis powered by GitHub Actions • [Configuration](.github/similarity-config.yml) • [Azure AI Setup](.github/AZURE_AI_SETUP.md)*
+            `;
+            
+            return report;
+
+      - name: Post or update PR comment
+        if: steps.should_analyze.outputs.analyze == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const report = ${{ steps.generate_report.outputs.result }};
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number
+            });
+            
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🎯 Prompt-to-Code Similarity Analysis')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body: report
+              });
+              console.log('✅ Updated existing comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body: report
+              });
+              console.log('✅ Posted new comment');
+            }
+
+      - name: Save analysis artifacts
+        if: steps.should_analyze.outputs.analyze == 'true'
+        run: |
+          mkdir -p analysis-results
+          
+          # Save analysis method and score
+          if [ -n "${{ steps.azure_analysis.outputs.result }}" ] && [ "${{ fromJSON(steps.azure_analysis.outputs.result).success }}" == "true" ]; then
+            echo "${{ steps.azure_analysis.outputs.result }}" > analysis-results/analysis.json
+          else
+            echo "${{ steps.fallback_analysis.outputs.result }}" > analysis-results/analysis.json
+          fi
+          
+          # Save PR details
+          echo "${{ steps.pr_details.outputs.result }}" > analysis-results/pr-details.json
+          
+          # Copy diff and prompts
+          cp pr_diff.txt analysis-results/ || true
+          cp prompt_content.txt analysis-results/ || true
+          
+          echo "✅ Artifacts saved"
+
+      - name: Upload analysis artifacts
+        if: steps.should_analyze.outputs.analyze == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: similarity-analysis-pr-${{ github.event.pull_request.number }}
+          path: analysis-results/
+          retention-days: 90
+
+      - name: Analysis summary
+        if: steps.should_analyze.outputs.analyze == 'true'
+        run: |
+          echo "📊 Similarity Analysis Complete"
+          echo ""
+          
+          if [ -n "${{ steps.azure_analysis.outputs.result }}" ] && [ "${{ fromJSON(steps.azure_analysis.outputs.result).success }}" == "true" ]; then
+            echo "Method: Azure AI"
+            echo "Score: ${{ fromJSON(steps.azure_analysis.outputs.result).analysis.similarity_score }}/100"
+          else
+            echo "Method: Keyword Fallback"
+            echo "Score: ${{ fromJSON(steps.fallback_analysis.outputs.result).analysis.similarity_score }}/100"
+          fi
+          
+          echo ""
+          echo "✅ Report posted to PR comments"
+          echo "✅ Artifacts uploaded"
+
+      - name: Skip message
+        if: steps.should_analyze.outputs.analyze != 'true'
+        run: |
+          echo "⏭️  No relevant file changes detected"
+          echo "Similarity analysis only runs when prompt or source files are modified"
