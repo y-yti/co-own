@@ -498,7 +498,7 @@ jobs:
 
             ---
             *Analysis powered by GitHub Actions • [Configuration](.github/similarity-config.yml) • [Azure AI Setup](.github/AZURE_AI_SETUP.md)*
-            `;
+            `
             
             return report;
 
