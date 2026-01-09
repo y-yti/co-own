@@ -107,26 +107,43 @@ jobs:
           # Construct the full URL
           URL="${ENDPOINT}/openai/deployments/${DEPLOYMENT}/chat/completions?api-version=${API_VERSION}"
           
+          # Prepare request body
+          REQUEST_BODY='{
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "Say hello in one word."
+              }
+            ],
+            "max_tokens": 10,
+            "temperature": 0.3
+          }'
+          
+          echo ""
+          echo "🔍 DEBUG: Request Details"
+          echo "----------------------------------------"
+          echo "Full URL: ${URL}"
+          echo ""
+          echo "Request Body:"
+          echo "$REQUEST_BODY"
+          echo ""
+          echo "Headers:"
+          echo "  Content-Type: application/json"
+          echo "  api-key: ${API_KEY:0:8}...${API_KEY: -4}"
+          echo "----------------------------------------"
+          echo ""
+          
           echo "Making test request to Azure OpenAI..."
           
           # Make test API call
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$URL" \
             -H "Content-Type: application/json" \
             -H "api-key: $API_KEY" \
-            -d '{
-              "messages": [
-                {
-                  "role": "system",
-                  "content": "You are a helpful assistant."
-                },
-                {
-                  "role": "user",
-                  "content": "Say hello in one word."
-                }
-              ],
-              "max_tokens": 10,
-              "temperature": 0.3
-            }')
+            -d "$REQUEST_BODY")
           
           # Extract HTTP status code (last line)
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
