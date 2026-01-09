@@ -265,6 +265,12 @@ jobs:
                   if (res.statusCode === 200) {
                     try {
                       const response = JSON.parse(data);
+                      
+                      // Validate response structure
+                      if (!response.choices || response.choices.length === 0 || !response.choices[0].message?.content) {
+                        throw new Error('Invalid response structure from Azure OpenAI');
+                      }
+                      
                       const content = response.choices[0].message.content;
                       const analysis = JSON.parse(content);
                       
@@ -401,8 +407,20 @@ jobs:
           script: |
             // Get analysis result (Azure or fallback)
             let result;
-            if (${{ steps.azure_analysis.outputs.result != '' && fromJSON(steps.azure_analysis.outputs.result).success }}) {
-              result = ${{ steps.azure_analysis.outputs.result }};
+            const azureResult = '${{ steps.azure_analysis.outputs.result }}';
+            
+            if (azureResult && azureResult !== '' && azureResult !== 'null') {
+              try {
+                const parsed = JSON.parse(azureResult);
+                if (parsed.success) {
+                  result = parsed;
+                } else {
+                  result = ${{ steps.fallback_analysis.outputs.result }};
+                }
+              } catch (e) {
+                // If parsing fails, use fallback
+                result = ${{ steps.fallback_analysis.outputs.result }};
+              }
             } else {
               result = ${{ steps.fallback_analysis.outputs.result }};
             }
@@ -531,14 +549,17 @@ jobs:
           mkdir -p analysis-results
           
           # Save analysis method and score
-          if [ -n "${{ steps.azure_analysis.outputs.result }}" ] && [ "${{ fromJSON(steps.azure_analysis.outputs.result).success }}" == "true" ]; then
-            echo "${{ steps.azure_analysis.outputs.result }}" > analysis-results/analysis.json
+          # Check if Azure result exists and is successful, otherwise use fallback
+          AZURE_RESULT='${{ steps.azure_analysis.outputs.result }}'
+          
+          if [ -n "$AZURE_RESULT" ] && [ "$AZURE_RESULT" != "null" ] && echo "$AZURE_RESULT" | grep -q '"success":true'; then
+            echo "$AZURE_RESULT" > analysis-results/analysis.json
           else
-            echo "${{ steps.fallback_analysis.outputs.result }}" > analysis-results/analysis.json
+            echo '${{ steps.fallback_analysis.outputs.result }}' > analysis-results/analysis.json
           fi
           
           # Save PR details
-          echo "${{ steps.pr_details.outputs.result }}" > analysis-results/pr-details.json
+          echo '${{ steps.pr_details.outputs.result }}' > analysis-results/pr-details.json
           
           # Copy diff and prompts
           cp pr_diff.txt analysis-results/ || true
@@ -560,12 +581,19 @@ jobs:
           echo "📊 Similarity Analysis Complete"
           echo ""
           
-          if [ -n "${{ steps.azure_analysis.outputs.result }}" ] && [ "${{ fromJSON(steps.azure_analysis.outputs.result).success }}" == "true" ]; then
+          # Check Azure result safely
+          AZURE_RESULT='${{ steps.azure_analysis.outputs.result }}'
+          
+          if [ -n "$AZURE_RESULT" ] && [ "$AZURE_RESULT" != "null" ] && echo "$AZURE_RESULT" | grep -q '"success":true'; then
             echo "Method: Azure AI"
-            echo "Score: ${{ fromJSON(steps.azure_analysis.outputs.result).analysis.similarity_score }}/100"
+            # Extract score from JSON manually to avoid fromJSON errors
+            SCORE=$(echo "$AZURE_RESULT" | grep -o '"similarity_score":[0-9]*' | grep -o '[0-9]*')
+            echo "Score: ${SCORE}/100"
           else
             echo "Method: Keyword Fallback"
-            echo "Score: ${{ fromJSON(steps.fallback_analysis.outputs.result).analysis.similarity_score }}/100"
+            FALLBACK_RESULT='${{ steps.fallback_analysis.outputs.result }}'
+            SCORE=$(echo "$FALLBACK_RESULT" | grep -o '"similarity_score":[0-9]*' | grep -o '[0-9]*')
+            echo "Score: ${SCORE}/100"
           fi
           
           echo ""
