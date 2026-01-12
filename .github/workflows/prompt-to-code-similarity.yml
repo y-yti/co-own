@@ -180,7 +180,7 @@ jobs:
             }
             
             // Read PR details and content
-            const prDetails = ${{ steps.pr_details.outputs.result }};
+            const prDetails = JSON.parse(`${{ steps.pr_details.outputs.result }}`);
             const promptContent = fs.readFileSync('prompt_content.txt', 'utf8');
             const diffContent = fs.readFileSync('pr_diff.txt', 'utf8');
             
