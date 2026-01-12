@@ -33,7 +33,7 @@ Create a PR that modifies files in `.github/prompts/` or source code to see simi
 ## How It Works
 
 1. **Detection**: When a PR modifies prompts in `.github/prompts/` or source code, the similarity workflow runs
-2. **Analysis**: Azure AI (or fallback keyword analysis) compares the prompt requirements with code changes
+2. **Analysis**: Azure AI compares the prompt requirements with code changes
 3. **Scoring**: A similarity score (0-100) is calculated based on:
    - Requirements coverage (40%)
    - Semantic alignment (30%)
