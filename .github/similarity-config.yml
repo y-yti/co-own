@@ -1,0 +1,75 @@
+# Prompt-to-Code Similarity Analysis Configuration
+
+# AI Provider Configuration
+ai_provider: azure  # Currently only 'azure' is supported
+
+# Similarity Score Thresholds (0-100)
+thresholds:
+  excellent: 80  # 80-100: Excellent alignment, high prompt maturity
+  good: 60       # 60-79: Good alignment, minor gaps
+  fair: 40       # 40-59: Fair alignment, needs improvement
+  poor: 0        # 0-39: Poor alignment, major revision needed
+
+# Analysis Weight Distribution (must sum to 100%)
+analysis_weights:
+  requirements_coverage: 40  # How well code covers prompt requirements
+  semantic_alignment: 30     # Semantic similarity between prompt and implementation
+  code_quality: 20          # Code quality and best practices adherence
+  completeness: 10          # Completeness of implementation
+
+# Analysis Options
+analysis_options:
+  analyze_tests: true              # Include test file analysis
+  analyze_documentation: true      # Check for documentation updates
+  check_acceptance_criteria: true  # Verify acceptance criteria are met
+  track_over_time: true           # Store historical similarity scores
+
+# Prompt File Patterns
+prompt_patterns:
+  - "us*.prompt.md"      # User story prompts
+  - "bug*.prompt.md"     # Bug fix prompts
+  - "feat*.prompt.md"    # Feature prompts
+  - "*.prompt.md"        # Any prompt file
+
+# Source Code Patterns
+source_patterns:
+  - "src/**"
+  - "app/**"
+  - "components/**"
+  - "lib/**"
+  - "pages/**"
+  - "frontend/**"
+  - "backend/**"
+
+# Test File Patterns
+test_patterns:
+  - "tests/**"
+  - "e2e/**"
+  - "**/*.spec.ts"
+  - "**/*.spec.js"
+  - "**/*.test.ts"
+  - "**/*.test.js"
+
+# Auto-fail Configuration (optional, disabled by default)
+auto_fail:
+  enabled: false         # Set to true to fail PR checks on low similarity
+  threshold: 40          # Minimum similarity score to pass (if enabled)
+
+# Fallback Configuration
+fallback:
+  enabled: true          # Use keyword-based analysis if Azure AI fails
+  max_score: 95          # Cap fallback scores to distinguish from AI analysis
+  min_keyword_length: 3  # Minimum keyword length for matching
+
+# API Configuration
+api:
+  max_diff_size: 8000    # Maximum diff size in characters
+  timeout: 60            # Timeout in seconds for API calls
+  retry_attempts: 2      # Number of retry attempts on failure
+  retry_delay: 5         # Delay between retries in seconds
+
+# Comment Configuration
+comment:
+  update_existing: true  # Update existing comments instead of creating new ones
+  include_footer: true   # Include helpful footer with similarity guide
+  include_progress_bar: true  # Show visual progress bar for scores
