@@ -175,12 +175,12 @@ jobs:
             
             // Check if Azure is configured
             if (!endpoint || !apiKey || !deployment) {
-              console.log('⚠️  Azure AI not configured, will use fallback analysis');
+              console.log('⚠️  Azure AI not configured');
               return { success: false, error: 'Azure AI not configured' };
             }
             
             // Read PR details and content
-            const prDetails = JSON.parse(`${{ steps.pr_details.outputs.result }}`);
+            const prDetails = ${{ steps.pr_details.outputs.result }};
             const promptContent = fs.readFileSync('prompt_content.txt', 'utf8');
             const diffContent = fs.readFileSync('pr_diff.txt', 'utf8');
             
@@ -314,115 +314,17 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
 
-      - name: Fallback keyword analysis
-        if: steps.should_analyze.outputs.analyze == 'true' && (steps.azure_analysis.outcome == 'failure' || fromJSON(steps.azure_analysis.outputs.result).success == false)
-        id: fallback_analysis
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            
-            console.log('🔄 Using fallback keyword-based analysis...');
-            
-            const promptContent = fs.readFileSync('prompt_content.txt', 'utf8').toLowerCase();
-            const diffContent = fs.readFileSync('pr_diff.txt', 'utf8').toLowerCase();
-            
-            // Extract keywords from prompts (words > 3 characters)
-            const promptWords = promptContent
-              .split(/\W+/)
-              .filter(w => w.length > 3)
-              .filter(w => !['that', 'this', 'with', 'from', 'have', 'will', 'been', 'were'].includes(w));
-            
-            const uniquePromptWords = [...new Set(promptWords)];
-            
-            // Count matches in diff
-            let matches = 0;
-            for (const word of uniquePromptWords) {
-              if (diffContent.includes(word)) {
-                matches++;
-              }
-            }
-            
-            // Calculate similarity (keyword overlap)
-            const keywordSimilarity = uniquePromptWords.length > 0 
-              ? Math.round((matches / uniquePromptWords.length) * 100)
-              : 50;
-            
-            // Apply heuristics
-            let score = keywordSimilarity;
-            
-            // Bonus for test files
-            if (diffContent.includes('test') || diffContent.includes('spec')) {
-              score += 5;
-            }
-            
-            // Bonus for component/implementation patterns
-            if (diffContent.includes('component') || diffContent.includes('function') || diffContent.includes('class')) {
-              score += 5;
-            }
-            
-            // Cap at 95 to distinguish from AI analysis
-            score = Math.min(score, 95);
-            score = Math.max(score, 0);
-            
-            // Determine alignment level
-            let alignment = 'poor';
-            if (score >= 80) alignment = 'excellent';
-            else if (score >= 60) alignment = 'good';
-            else if (score >= 40) alignment = 'fair';
-            
-            const analysis = {
-              similarity_score: score,
-              alignment_level: alignment,
-              matched_requirements: [
-                'Code changes detected that relate to prompt keywords',
-                `Found ${matches} keyword matches out of ${uniquePromptWords.length} prompt keywords`
-              ],
-              missing_requirements: [
-                'Unable to perform deep semantic analysis (Azure AI unavailable)',
-                'Manual review recommended for accuracy'
-              ],
-              unexpected_changes: [],
-              recommendations: [
-                'Configure Azure AI for more accurate analysis',
-                'Review .github/AZURE_AI_SETUP.md for setup instructions',
-                'Verify all acceptance criteria are met manually'
-              ],
-              maturity_assessment: 'Keyword-based analysis only. Configure Azure AI for detailed assessment.'
-            };
-            
-            console.log(`Fallback similarity score: ${score}/100`);
-            
-            return {
-              success: true,
-              analysis: analysis,
-              method: 'keyword-fallback'
-            };
-
       - name: Generate analysis report
         if: steps.should_analyze.outputs.analyze == 'true'
         id: generate_report
         uses: actions/github-script@v7
         with:
           script: |
-            // Get analysis result (Azure or fallback)
-            let result;
-            const azureResult = '${{ steps.azure_analysis.outputs.result }}';
+            // Get Azure analysis result
+            const result = ${{ steps.azure_analysis.outputs.result }};
             
-            if (azureResult && azureResult !== '' && azureResult !== 'null') {
-              try {
-                const parsed = JSON.parse(azureResult);
-                if (parsed.success) {
-                  result = parsed;
-                } else {
-                  result = ${{ steps.fallback_analysis.outputs.result }};
-                }
-              } catch (e) {
-                // If parsing fails, use fallback
-                result = ${{ steps.fallback_analysis.outputs.result }};
-              }
-            } else {
-              result = ${{ steps.fallback_analysis.outputs.result }};
+            if (!result || !result.success) {
+              throw new Error('Azure AI analysis failed. Please check Azure AI configuration.');
             }
             
             const analysis = result.analysis;
@@ -442,9 +344,7 @@ jobs:
             const progressBar = '█'.repeat(filledLength) + '░'.repeat(progressBarLength - filledLength);
             
             // Analysis method badge
-            const methodBadge = method === 'azure-ai' 
-              ? '🤖 *Analyzed with Azure AI*'
-              : '⚠️ *Keyword-based analysis (Azure AI unavailable)*';
+            const methodBadge = '🤖 *Analyzed with Azure AI*';
             
             // Build report
             const report = `## 🎯 Prompt-to-Code Similarity Analysis
@@ -548,15 +448,8 @@ jobs:
         run: |
           mkdir -p analysis-results
           
-          # Save analysis method and score
-          # Check if Azure result exists and is successful, otherwise use fallback
-          AZURE_RESULT='${{ steps.azure_analysis.outputs.result }}'
-          
-          if [ -n "$AZURE_RESULT" ] && [ "$AZURE_RESULT" != "null" ] && echo "$AZURE_RESULT" | grep -q '"success":true'; then
-            echo "$AZURE_RESULT" > analysis-results/analysis.json
-          else
-            echo '${{ steps.fallback_analysis.outputs.result }}' > analysis-results/analysis.json
-          fi
+          # Save Azure analysis result
+          echo '${{ steps.azure_analysis.outputs.result }}' > analysis-results/analysis.json
           
           # Save PR details
           echo '${{ steps.pr_details.outputs.result }}' > analysis-results/pr-details.json
@@ -581,20 +474,11 @@ jobs:
           echo "📊 Similarity Analysis Complete"
           echo ""
           
-          # Check Azure result safely
+          # Extract score from Azure result
           AZURE_RESULT='${{ steps.azure_analysis.outputs.result }}'
-          
-          if [ -n "$AZURE_RESULT" ] && [ "$AZURE_RESULT" != "null" ] && echo "$AZURE_RESULT" | grep -q '"success":true'; then
-            echo "Method: Azure AI"
-            # Extract score from JSON manually to avoid fromJSON errors
-            SCORE=$(echo "$AZURE_RESULT" | grep -o '"similarity_score":[0-9]*' | grep -o '[0-9]*')
-            echo "Score: ${SCORE}/100"
-          else
-            echo "Method: Keyword Fallback"
-            FALLBACK_RESULT='${{ steps.fallback_analysis.outputs.result }}'
-            SCORE=$(echo "$FALLBACK_RESULT" | grep -o '"similarity_score":[0-9]*' | grep -o '[0-9]*')
-            echo "Score: ${SCORE}/100"
-          fi
+          echo "Method: Azure AI"
+          SCORE=$(echo "$AZURE_RESULT" | grep -o '"similarity_score":[0-9]*' | grep -o '[0-9]*')
+          echo "Score: ${SCORE}/100"
           
           echo ""
           echo "✅ Report posted to PR comments"
