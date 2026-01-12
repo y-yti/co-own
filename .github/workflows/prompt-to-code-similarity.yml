@@ -175,7 +175,7 @@ jobs:
             
             // Check if Azure is configured
             if (!endpoint || !apiKey || !deployment) {
-              console.log('⚠️  Azure AI not configured, will use fallback analysis');
+              console.log('⚠️  Azure AI not configured');
               return { success: false, error: 'Azure AI not configured' };
             }
             
